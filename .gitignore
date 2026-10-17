@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Environments & secrets
+.venv/
+venv/
+env/
+.env
+
+# Local data (user uploads and metadata DB) — sample data IS committed
+data/storage/
+data/*.db
+data/*.db-journal
+*.sqlite
+reports/*
+!reports/.gitkeep
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

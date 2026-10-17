@@ -1,0 +1,112 @@
+{
+  "synthetic": true,
+  "assets": [
+    {
+      "name": "Retail Transactions",
+      "asset_type": "dataset",
+      "dataset_name": "Retail Transactions",
+      "columns": [
+        "transaction_id",
+        "transaction_date",
+        "quantity",
+        "unit_price",
+        "discount_pct",
+        "revenue",
+        "product_category",
+        "region"
+      ]
+    },
+    {
+      "name": "Customer Master",
+      "asset_type": "dataset",
+      "dataset_name": "Customer Master",
+      "columns": [
+        "customer_id",
+        "segment"
+      ]
+    },
+    {
+      "name": "Daily Revenue",
+      "asset_type": "transformation",
+      "description": "SUM(revenue) and AVG(discount_pct) by transaction_date and region."
+    },
+    {
+      "name": "Monthly Revenue KPI",
+      "asset_type": "metric",
+      "description": "Monthly revenue total and growth vs previous month."
+    },
+    {
+      "name": "Executive Dashboard",
+      "asset_type": "report",
+      "description": "Leadership dashboard with revenue and category mix tiles."
+    },
+    {
+      "name": "Category Mix Report",
+      "asset_type": "report",
+      "description": "Share of revenue per product_category."
+    },
+    {
+      "name": "Churn Model Features",
+      "asset_type": "ml_feature",
+      "description": "customer_age, segment and order frequency used by a churn model."
+    }
+  ],
+  "edges": [
+    {
+      "source": "Retail Transactions",
+      "target": "Daily Revenue",
+      "source_columns": [
+        "transaction_date",
+        "revenue",
+        "discount_pct",
+        "region"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Daily Revenue",
+      "target": "Monthly Revenue KPI",
+      "source_columns": [],
+      "kind": "known"
+    },
+    {
+      "source": "Monthly Revenue KPI",
+      "target": "Executive Dashboard",
+      "source_columns": [],
+      "kind": "known"
+    },
+    {
+      "source": "Retail Transactions",
+      "target": "Category Mix Report",
+      "source_columns": [
+        "product_category",
+        "revenue"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Category Mix Report",
+      "target": "Executive Dashboard",
+      "source_columns": [],
+      "kind": "inferred"
+    },
+    {
+      "source": "Retail Transactions",
+      "target": "Churn Model Features",
+      "source_columns": [
+        "customer_id",
+        "customer_age"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Customer Master",
+      "target": "Churn Model Features",
+      "source_columns": [
+        "customer_id",
+        "segment"
+      ],
+      "kind": "known"
+    }
+  ]
+}

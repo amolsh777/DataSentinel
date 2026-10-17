@@ -1,0 +1,179 @@
+{
+  "synthetic": true,
+  "notice": "All files in this directory are SYNTHETIC demonstration data.",
+  "files": {
+    "retail_transactions_v1.csv": {
+      "synthetic": true,
+      "description": "Clean baseline, Q1 2025.",
+      "rows": 5000,
+      "columns": [
+        "transaction_id",
+        "transaction_date",
+        "customer_id",
+        "product_category",
+        "quantity",
+        "unit_price",
+        "discount_pct",
+        "revenue",
+        "payment_method",
+        "region",
+        "customer_age",
+        "is_returned"
+      ],
+      "sha256": "07b1a2a7e260ccf101f95e8c4d6352886019c06663953b4f86843a49957ab4e4",
+      "injected_issues": []
+    },
+    "retail_transactions_v1b_stable.csv": {
+      "synthetic": true,
+      "description": "Q2 2025 drawn from the same distributions as v1; expect no meaningful drift (transaction_date range and transaction_id values differ by design).",
+      "rows": 5000,
+      "columns": [
+        "transaction_id",
+        "transaction_date",
+        "customer_id",
+        "product_category",
+        "quantity",
+        "unit_price",
+        "discount_pct",
+        "revenue",
+        "payment_method",
+        "region",
+        "customer_age",
+        "is_returned"
+      ],
+      "sha256": "e023536fea9e8de07ec537c9779e8e1828641cd440013c12e562611cdfc29344",
+      "injected_issues": []
+    },
+    "retail_transactions_v2.csv": {
+      "synthetic": true,
+      "description": "Q2 2025 with intentionally injected issues.",
+      "rows": 5150,
+      "columns": [
+        "transaction_id",
+        "transaction_date",
+        "customer_id",
+        "product_category",
+        "quantity",
+        "unit_price",
+        "revenue",
+        "payment_method",
+        "region",
+        "customer_age",
+        "is_returned",
+        "loyalty_tier"
+      ],
+      "sha256": "d8ab7221a92964e018f73722560d558fd4e59a162fc22362d59a7c8768bc702e",
+      "injected_issues": [
+        {
+          "id": "ISS-01",
+          "type": "unexpected_column",
+          "columns": [
+            "loyalty_tier"
+          ],
+          "description": "New column not present in the baseline schema.",
+          "expected_detection": "schema drift: added column"
+        },
+        {
+          "id": "ISS-02",
+          "type": "removed_column",
+          "columns": [
+            "discount_pct"
+          ],
+          "description": "Column present in the baseline has been removed.",
+          "expected_detection": "schema drift: removed column (breaks Daily Revenue lineage)"
+        },
+        {
+          "id": "ISS-03",
+          "type": "type_change",
+          "columns": [
+            "quantity"
+          ],
+          "description": "About 2% of quantity values are the string 'unknown'; pandas dtype becomes object.",
+          "expected_detection": "schema drift: dtype change; quality: type mismatch / invalid values"
+        },
+        {
+          "id": "ISS-04",
+          "type": "missingness_increase",
+          "columns": [
+            "customer_age",
+            "payment_method"
+          ],
+          "description": "customer_age missing rate 1% -> 18%; payment_method 0% -> 8%.",
+          "expected_detection": "quality: missing-value threshold; drift: missingness change"
+        },
+        {
+          "id": "ISS-05",
+          "type": "numeric_shift",
+          "columns": [
+            "unit_price",
+            "revenue",
+            "customer_age"
+          ],
+          "description": "unit_price x1.30 within every category (revenue follows); customer_age mean 35 -> 43. The overall unit_price median rises less (~14%) because the new categories in ISS-06 are cheaper, so compare per category when explaining it.",
+          "expected_detection": "statistical drift: PSI / KS / Wasserstein"
+        },
+        {
+          "id": "ISS-06",
+          "type": "unseen_categories",
+          "columns": [
+            "product_category",
+            "region"
+          ],
+          "description": "New categories 'Toys' (~8%), 'Grocery' (~7%) and region 'Central' (~6%).",
+          "expected_detection": "drift: unseen categories, JS divergence; quality: invalid categorical values"
+        },
+        {
+          "id": "ISS-07",
+          "type": "duplicate_rows",
+          "columns": [
+            "*"
+          ],
+          "description": "150 exact duplicate rows appended (duplicate transaction_id values).",
+          "expected_detection": "quality: duplicate rows; unique-key violation on transaction_id"
+        },
+        {
+          "id": "ISS-08",
+          "type": "business_rule_violation",
+          "columns": [
+            "revenue"
+          ],
+          "description": "30 rows have negative revenue.",
+          "expected_detection": "quality: numeric range / business rule revenue >= 0"
+        },
+        {
+          "id": "ISS-09",
+          "type": "referential_integrity",
+          "columns": [
+            "customer_id"
+          ],
+          "description": "About 3% of rows reference customer IDs absent from customers_clean.csv.",
+          "expected_detection": "quality: referential integrity vs customers_clean.customer_id"
+        }
+      ]
+    },
+    "customers_clean.csv": {
+      "synthetic": true,
+      "description": "Clean customer master.",
+      "rows": 800,
+      "columns": [
+        "customer_id",
+        "signup_date",
+        "city",
+        "segment",
+        "lifetime_orders"
+      ],
+      "sha256": "2b6ca5d658b56dde08d5fb9f8d78bf593947c8e5c9167377f29c58b3cf524752",
+      "injected_issues": []
+    },
+    "retail_transactions_sample.xlsx": {
+      "synthetic": true,
+      "description": "Workbook with README and Transactions sheets (select 'Transactions').",
+      "sheets": [
+        "README",
+        "Transactions"
+      ],
+      "rows": 500,
+      "injected_issues": []
+    }
+  }
+}
