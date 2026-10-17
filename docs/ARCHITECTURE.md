@@ -38,11 +38,11 @@ always labelled as synthetic.
 | 4 | Deterministic synthetic demo data + reset script | 1 ✅ |
 | 5 | Configurable validation rules (12 check types) | 2 ✅ |
 | 6 | Schema drift vs baseline (added/removed/type/nullability/category) | 2 ✅ |
-| 7 | Baseline management with confirmation + audit reason | 3 |
-| 8 | Statistical drift: PSI, KS, Wasserstein, JS divergence, chi-square, BH correction | 3 |
+| 7 | Baseline management with confirmation + audit reason | 3 ✅ |
+| 8 | Statistical drift: PSI, KS, Wasserstein, JS divergence, chi-square, BH correction | 3 ✅ |
 | 9 | Monitoring runs, incidents, fingerprint deduplication, status history | 4 |
 | 10 | Lineage graph, traversal, impact analysis, cycle detection | 5 |
-| 11 | Rule-based recommendations | 5 |
+| 11 | Rule-based recommendations (root-cause analysis delivered in 3; recommendations extend it) | 3 ✅ / 5 |
 | 12 | CSV/JSON/HTML report export | 5 |
 | 13 | Streamlit dashboard (10 pages), Plotly charts | 6 |
 | 14 | Docker, README, demo script, end-to-end tests | 7 |
@@ -140,6 +140,12 @@ breaking/compatible with a severity. Rename candidates need name similarity ≥ 
 and the same inferred type, and are never merged automatically. Category changes
 use the stored top-20 lists (`certain=false` when truncated).
 
+**Quality score and root cause (phase 3).** The rule-based score is a severity-weighted,
+affected-percentage-driven average per dimension, combined with configurable weights over
+the *evaluated* dimensions only; accuracy requires referential evidence. Root-cause analysis
+is a deterministic pattern catalogue whose hypotheses must cite observed evidence.
+See `docs/DRIFT.md` and `docs/RCA.md`.
+
 **Drift (phase 3).**
 - PSI on reference-quantile bins (default 10), epsilon smoothing for empty
   bins; conventional bands 0.1 / 0.25 shown as *guidelines*, not truths.
@@ -165,7 +171,7 @@ It is a triage heuristic, never presented as a probability.
 
 ## 6. API contract
 
-Implemented in phases 1–2 (all JSON; errors use
+Implemented in phases 1–3 (all JSON; errors use
 `{"error": {"code", "message", "details"}}`):
 
 | Method | Route | Purpose |
@@ -185,6 +191,10 @@ Implemented in phases 1–2 (all JSON; errors use
 | POST | `/api/datasets/{id}/rules/suggest` | Rules learned from a version profile (`save=true` persists) |
 | POST | `/api/datasets/{id}/versions/{n}/validate` | Ad-hoc validation (`reference_version` enables schema_match) |
 | GET | `/api/datasets/{id}/schema-diff?reference=&current=` | Schema comparison |
+| GET/POST | `/api/datasets/{id}/baselines`, `/baseline` | Baseline history / approve (reason + confirm to replace) |
+| POST | `/api/datasets/{id}/drift` | Statistical drift vs baseline or explicit reference |
+| POST | `/api/datasets/{id}/score`, `/score/compare` | Configurable quality score / two-version comparison |
+| POST | `/api/datasets/{id}/root-cause` | Hypotheses, investigation steps, corrective actions |
 
 Planned: `POST /api/datasets/{id}/baseline`, `GET /api/datasets/{id}/baselines`,
 `POST /api/datasets/{id}/monitor`, `GET /api/datasets/{id}/runs`,

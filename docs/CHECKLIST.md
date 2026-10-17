@@ -32,12 +32,19 @@ Legend: ✅ done & tested · ⏳ next · ⬜ planned
       (statistical drift, Phase 3) is detected; v1 and the stable v1b produce no findings
 - ✅ 162 automated tests passing
 
-## Phase 3 — Baselines & statistical drift ⏳
-- ⬜ Baseline set/change with confirmation + reason + history
-- ⬜ PSI, KS, Wasserstein (IQR-normalised), JS distance, chi-square with assumption checks
-- ⬜ Benjamini–Hochberg, minimum sample sizes, missingness change, exclusions, dataset-level summary
+## Phase 3 — Baselines, drift, quality score, root cause ✅
+- ✅ Baseline set/replace with required reason, explicit confirmation, audit history
+- ✅ PSI, KS, Wasserstein (IQR-normalised), JS distance, chi-square with assumption checks
+- ✅ Benjamini–Hochberg, minimum sample sizes, missingness change, exclusions, dataset-level summary
+- ✅ Effect-size-gated verdicts (verified on a 50k-row trivial shift), configurable thresholds
+- ✅ Configurable rule-based quality score: 5 dimensions, weights, thresholds, per-rule breakdown,
+      accuracy only with referential evidence, cross-version compare
+- ✅ Root-cause analysis: evidence-gated hypotheses, investigation steps, corrective actions,
+      quality/schema/drift evidence merged per column
+- ✅ Demo reset approves the v1 baseline; drift/RCA verified against all injected v2 issues
+- ✅ 227 automated tests passing
 
-## Phase 4 — Monitoring runs & incidents
+## Phase 4 — Monitoring runs & incidents ⏳
 - ⬜ Run orchestration + persistence, severity scoring, incident fingerprint dedup, recurrence, status history
 
 ## Phase 5 — Lineage, recommendations, reports

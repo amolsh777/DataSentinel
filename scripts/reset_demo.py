@@ -30,4 +30,5 @@ if __name__ == "__main__":
     result = reset_demo(settings, with_v2=args.with_v2)
     print(f"Demo reset complete. Registered: {', '.join(result['registered'])}"
           f"{' (+ Retail Transactions v2)' if result['with_v2'] else ''}; "
-          f"{result['rules']} validation rules configured for Retail Transactions.")
+          f"{result['rules']} validation rules configured and v{result['baseline_version']} approved "
+          "as the Retail Transactions baseline.")

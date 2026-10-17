@@ -13,7 +13,7 @@ from app.core.config import PROJECT_ROOT, Settings
 from app.database.base import Base
 from app.database.session import build_engine, build_session_factory, init_db
 from app.demo.sample_data import generate_all
-from app.services import dataset_service, quality_service, storage
+from app.services import baseline_service, dataset_service, quality_service, storage
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,12 @@ def reset_demo(settings: Settings, *, with_v2: bool = False, sample_dir: Path = 
         for spec in DEMO_RULES:
             quality_service.create_rule(session, {"dataset_id": retail.id, **spec})
         rule_count = len(saved) + len(DEMO_RULES)
+
+        # Approve the clean v1 as the baseline so drift / root-cause work out of the box.
+        baseline_service.set_baseline(
+            session, retail.id, 1, reason="Clean Q1 2025 synthetic baseline (demo seed)",
+            set_by="demo", confirm=False,
+        )
         if with_v2:
             dataset_service.add_version(
                 session,
@@ -101,4 +107,4 @@ def reset_demo(settings: Settings, *, with_v2: bool = False, sample_dir: Path = 
         session.close()
         engine.dispose()
     return {"registered": registered, "with_v2": with_v2, "sample_dir": str(sample_dir),
-            "rules": rule_count}
+            "rules": rule_count, "baseline_version": 1}

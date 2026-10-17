@@ -6,7 +6,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import datasets, files, health, quality
+from app.api import analysis, datasets, files, health, quality
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
@@ -46,5 +46,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(datasets.router)
     api.include_router(quality.dataset_quality_router)
     api.include_router(quality.rules_router)
+    api.include_router(analysis.router)
     app.include_router(api)
     return app
