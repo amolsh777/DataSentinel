@@ -44,6 +44,13 @@ Legend: ✅ done & tested · ⏳ next · ⬜ planned
 - ✅ Demo reset approves the v1 baseline; drift/RCA verified against all injected v2 issues
 - ✅ 227 automated tests passing
 
+## Frontend (delivered early, covers Phases 1–3) ✅
+- ✅ Streamlit app: dark theme, sidebar dataset switcher, 7 pages (Overview, Datasets, Data Quality, Drift,
+      Schema, Root Cause, Rules & Baselines), Plotly charts, JSON/CSV/Markdown exports
+- ✅ Demo-data loader, rule CRUD, baseline approval with confirmation, configurable score weights/thresholds
+- ✅ 21 headless AppTest tests against a real backend (incl. from-scratch demo workflow, empty/unreachable backend)
+- ⬜ Incident Center, Lineage, Historical Runs, Reports pages: added with Phases 4–5
+
 ## Phase 4 — Monitoring runs & incidents ⏳
 - ⬜ Run orchestration + persistence, severity scoring, incident fingerprint dedup, recurrence, status history
 

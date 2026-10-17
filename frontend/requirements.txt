@@ -1,0 +1,6 @@
+# Frontend dependencies. Installs the backend pins too, so one virtual environment can run both.
+# Streamlit 1.46.1 is the tested version and is compatible with the backend's FastAPI/Starlette pins.
+-r ../backend/requirements.txt
+streamlit==1.46.1
+plotly==7.1.0
+requests==2.34.2

@@ -44,7 +44,7 @@ always labelled as synthetic.
 | 10 | Lineage graph, traversal, impact analysis, cycle detection | 5 |
 | 11 | Rule-based recommendations (root-cause analysis delivered in 3; recommendations extend it) | 3 ✅ / 5 |
 | 12 | CSV/JSON/HTML report export | 5 |
-| 13 | Streamlit dashboard (10 pages), Plotly charts | 6 |
+| 13 | Streamlit dashboard (10 pages), Plotly charts | 7 of 10 pages built early; Incident Center, Lineage, Historical Runs follow with phases 4–5 |
 | 14 | Docker, README, demo script, end-to-end tests | 7 |
 
 **Deferred (only after the core pipeline works)**: SQL-database ingestion,

@@ -7,10 +7,11 @@ duplicates, invalid values and distribution drift — before dashboards and ML
 models quietly start using bad data, and traces which downstream assets are
 affected.
 
-> **Status: Phase 3 of 7 complete** — foundation, ingestion, profiling,
-> synthetic demo data, the validation engine, schema drift, **baselines,
-> statistical drift detection, a configurable quality score and root-cause
-> analysis**. Monitoring runs, incidents, lineage and the dashboard come next. See [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
+> **Status: Phase 3 of 7 complete, plus a working dashboard** — foundation, ingestion,
+> profiling, synthetic demo data, validation engine, schema drift, baselines, statistical
+> drift, configurable quality score, root-cause analysis, and a **Streamlit frontend**
+> that exercises all of it. Monitoring runs, incidents and lineage come next; their
+> pages will be added with them. See [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
 > and the full plan in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## What works now
@@ -41,7 +42,8 @@ affected.
 - **Root-cause analysis**: for each issue, evidence from current and baseline data, ranked
   *hypotheses* (never stated as fact, each backed by observed evidence), investigation steps and
   corrective actions. Deterministic, no LLM needed. See [`docs/RCA.md`](docs/RCA.md)
-- 227 automated tests
+- **Streamlit dashboard** (7 pages, Plotly charts) covering every feature above — see [`frontend/README.md`](frontend/README.md)
+- 227 backend tests + 21 frontend tests
 
 ## Quick start (Windows PowerShell)
 
@@ -75,6 +77,16 @@ uvicorn app.asgi:app --reload --port 8000
 ```
 
 Open **http://127.0.0.1:8000/docs** to try every endpoint from the browser.
+
+### Dashboard
+
+```powershell
+# from the repository root, in the same virtual environment (two terminals: backend + frontend)
+pip install -r frontend\requirements.txt
+streamlit run frontend\app.py        # http://localhost:8501
+```
+
+The backend must be running (step 7). Details, page guide and frontend tests: [`frontend/README.md`](frontend/README.md).
 
 ### Try it from PowerShell
 
@@ -209,7 +221,7 @@ backend/tests/ pytest suite
 data/sample/   synthetic datasets + manifest
 docs/          ARCHITECTURE.md, CHECKLIST.md, RULES.md, DRIFT.md, RCA.md
 scripts/       generate_sample_data.py, reset_demo.py
-frontend/      Streamlit app (Phase 6)
+frontend/      Streamlit dashboard (pages, components, REST client, AppTest suite)
 ```
 
 ## Troubleshooting
@@ -222,7 +234,8 @@ frontend/      Streamlit app (Phase 6)
 
 ## Limitations (current phase)
 
-- No persisted monitoring runs, incidents, lineage or UI yet (Phases 4–6).
+- No persisted monitoring runs, incidents or lineage yet (Phases 4–5); the dashboard has no pages for them
+  until they exist. The dashboard has been tested headlessly, not inspected visually in a browser.
 - Validation, drift, score and root-cause results are computed on request and not stored yet
   (Phase 4 adds persisted runs, so score history across runs arrives then; today you can compare
   two versions with `/score/compare`).
@@ -239,4 +252,4 @@ frontend/      Streamlit app (Phase 6)
 
 ## Screenshots
 
-*To be added in Phase 6.*
+*Run the dashboard and add screenshots here.*
