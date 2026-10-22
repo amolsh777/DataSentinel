@@ -165,3 +165,83 @@ def severity_donut(counts: dict[str, int]) -> go.Figure:
                            marker_colors=[SEVERITY_COLORS[s] for s in order], textinfo="value"))
     fig.update_layout(showlegend=True)
     return _style(fig, 240)
+
+
+def run_history_chart(rows: list[dict]) -> go.Figure:
+    """Score and failure count over monitoring runs."""
+    labels = [f"v{r['current_version']}\n{r.get('started_at','')[:10]}" for r in rows]
+    scores = [r["score"] for r in rows]
+    failures = [r["failures"] for r in rows]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=labels, y=scores, name="quality score", mode="lines+markers",
+                             line=dict(color=ACCENT, width=2), marker=dict(size=7)))
+    fig.add_trace(go.Bar(x=labels, y=failures, name="rule failures", yaxis="y2",
+                         marker_color="#ef444460", opacity=0.6))
+    fig.update_layout(
+        yaxis=dict(title="quality score", range=[0, 105], side="left"),
+        yaxis2=dict(title="rule failures", overlaying="y", side="right", showgrid=False),
+        legend=dict(orientation="h", y=1.12))
+    return _style(fig, 320, "Quality score and failures over time")
+
+
+def network_plotly(assets: list[dict], edges: list[dict], highlight_ids: set[str] | None = None) -> go.Figure:
+    """Simple force-directed lineage graph drawn with Plotly."""
+    import math
+    if not assets:
+        return go.Figure()
+
+    highlight_ids = highlight_ids or set()
+    # Circular layout by asset type.
+    TYPE_ORDER = ["dataset", "transformation", "metric", "report", "ml_feature"]
+    by_type: dict[str, list] = {t: [] for t in TYPE_ORDER}
+    for a in assets:
+        by_type.setdefault(a["asset_type"], []).append(a)
+
+    pos: dict[str, tuple[float, float]] = {}
+    ring = 0
+    for atype in TYPE_ORDER:
+        group = by_type.get(atype, [])
+        for i, a in enumerate(group):
+            angle = 2 * math.pi * i / max(len(group), 1)
+            r = 1 + ring * 0.7
+            pos[a["id"]] = (r * math.cos(angle), r * math.sin(angle))
+        if group:
+            ring += 1
+
+    TYPE_COLORS = {"dataset": "#2dd4bf", "transformation": "#38bdf8", "metric": "#a78bfa",
+                   "report": "#f472b6", "ml_feature": "#fb923c"}
+    id_map = {a["id"]: a for a in assets}
+
+    # Edges.
+    ex, ey = [], []
+    for e in edges:
+        if e["source_asset_id"] in pos and e["target_asset_id"] in pos:
+            sx, sy = pos[e["source_asset_id"]]
+            tx, ty = pos[e["target_asset_id"]]
+            ex += [sx, tx, None]; ey += [sy, ty, None]
+
+    traces = [go.Scatter(x=ex, y=ey, mode="lines",
+                         line=dict(color="#334155", width=1.5),
+                         hoverinfo="skip", name="edges")]
+
+    for atype in TYPE_ORDER:
+        group = by_type.get(atype, [])
+        if not group:
+            continue
+        xs = [pos[a["id"]][0] for a in group if a["id"] in pos]
+        ys = [pos[a["id"]][1] for a in group if a["id"] in pos]
+        texts = [a["name"] for a in group if a["id"] in pos]
+        sizes = [16 if a["id"] in highlight_ids else 11 for a in group if a["id"] in pos]
+        colors = ["#f97316" if a["id"] in highlight_ids else TYPE_COLORS.get(atype, "#64748b")
+                  for a in group if a["id"] in pos]
+        traces.append(go.Scatter(
+            x=xs, y=ys, mode="markers+text", text=texts,
+            textposition="top center", name=atype,
+            marker=dict(size=sizes, color=colors, line=dict(color="#0b1220", width=1.5)),
+            hovertemplate="<b>%{text}</b><br>type: " + atype + "<extra></extra>"))
+
+    fig = go.Figure(traces)
+    fig.update_layout(showlegend=True, hovermode="closest")
+    fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
+    fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False)
+    return _style(fig, 500)

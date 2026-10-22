@@ -9,4 +9,5 @@ pandas==2.2.3
 numpy==2.1.3
 openpyxl==3.1.5
 scipy==1.17.1
+apscheduler==3.11.0
 # Added in later phases: streamlit, plotly, requests (frontend)

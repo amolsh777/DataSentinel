@@ -7,6 +7,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 import pandas as pd  # noqa: E402
+from pages.settings_ext import render_alerting, render_scheduler  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from components import state, ui  # noqa: E402
@@ -32,7 +33,7 @@ SEVS = ["info", "low", "medium", "high", "critical"]
 c = state.client()
 ds = state.current_dataset()
 ui.page_header("Rules & Baselines", "Approve reference versions and configure validation rules.", ds)
-tab_base, tab_rules = st.tabs(["Baselines", "Validation rules"])
+tab_base, tab_rules, tab_alert, tab_sched = st.tabs(["Baselines", "Validation rules", "Alerting", "Scheduler"])
 
 # --------------------------------------------------------------- baselines
 with tab_base:
@@ -149,3 +150,10 @@ with tab_rules:
             st.success("Rule created.")
             st.rerun()
     st.caption("Business-rule expressions use a safe subset of Python (see docs/RULES.md); text is never executed.")
+
+
+with tab_alert:
+    render_alerting(c, ds)
+
+with tab_sched:
+    render_scheduler(c, ds)

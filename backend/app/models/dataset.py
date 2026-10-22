@@ -32,6 +32,7 @@ class Dataset(Base):
     owner: Mapped[str | None] = mapped_column(String(120))
     project: Mapped[str | None] = mapped_column(String(120), index=True)
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str | None] = mapped_column(Text)  # also holds __ds_schedule__ JSON
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow

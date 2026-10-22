@@ -145,3 +145,69 @@ class ApiClient:
 
     def root_cause(self, dataset_id: str, body: dict[str, Any]) -> dict[str, Any]:
         return self._post(f"/datasets/{dataset_id}/root-cause", body)
+
+
+    # ─────────────────────────────────── monitoring ──────────────────────────
+    def monitor(self, dataset_id: str, body: dict = None) -> dict:
+        return self._post(f"/datasets/{dataset_id}/monitor", body or {})
+
+    def list_runs(self, dataset_id: str, limit: int = 50) -> dict:
+        return self._get(f"/datasets/{dataset_id}/runs", limit=limit)
+
+    def run_history(self, dataset_id: str, limit: int = 20) -> list:
+        return self._get(f"/datasets/{dataset_id}/runs/history", limit=limit)
+
+    def get_run(self, dataset_id: str, run_id: str) -> dict:
+        return self._get(f"/datasets/{dataset_id}/runs/{run_id}")
+
+    def list_incidents(self, **params) -> dict:
+        return self._get("/incidents", **{k: v for k, v in params.items() if v is not None})
+
+    def get_incident(self, incident_id: str) -> dict:
+        return self._get(f"/incidents/{incident_id}")
+
+    def update_incident(self, incident_id: str, status: str, note: str = "", changed_by: str = "") -> dict:
+        return self._request("PATCH", f"/incidents/{incident_id}",
+                             json={"status": status, "note": note, "changed_by": changed_by or None})
+
+    def incident_history(self, incident_id: str) -> list:
+        return self._get(f"/incidents/{incident_id}/history")
+
+    def get_report(self, run_id: str, fmt: str = "html") -> bytes:
+        try:
+            r = self._session.get(f"{self.base_url}/runs/{run_id}/report",
+                                  params={"format": fmt}, timeout=self.timeout)
+            r.raise_for_status()
+            return r.content
+        except Exception as exc:
+            from services.api_client import ApiError
+            raise ApiError(str(exc)) from None
+
+    # ─────────────────────────────────── lineage ─────────────────────────────
+    def get_lineage(self) -> dict:
+        return self._get("/lineage")
+
+    def create_asset(self, body: dict) -> dict:
+        return self._request("POST", "/lineage", json=body)
+
+    def create_edge(self, body: dict) -> dict:
+        return self._request("POST", "/lineage/edges", json=body)
+
+    def delete_asset(self, asset_id: str) -> None:
+        self._request("DELETE", f"/lineage/{asset_id}")
+
+    def delete_edge(self, edge_id: str) -> None:
+        self._request("DELETE", f"/lineage/edges/{edge_id}")
+
+    def get_lineage_impact(self, dataset_id: str, columns: list) -> dict:
+        return self._get(f"/lineage/impact/{dataset_id}", columns=columns)
+
+    # ─────────────────────────────────── alerts / scheduler ──────────────────
+    def test_alert(self, dataset_id: str, webhook_url: str) -> dict:
+        return self._post(f"/datasets/{dataset_id}/alerts/test", {"webhook_url": webhook_url})
+
+    def get_schedule(self, dataset_id: str) -> dict:
+        return self._get(f"/datasets/{dataset_id}/schedule")
+
+    def set_schedule(self, dataset_id: str, body: dict) -> dict:
+        return self._post(f"/datasets/{dataset_id}/schedule", body)

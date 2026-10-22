@@ -6,14 +6,14 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import analysis, datasets, files, health, quality
+from app.api import analysis, datasets, files, health, monitoring, quality
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.database.session import build_engine, build_session_factory, init_db
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, lifespan=None) -> FastAPI:
     """Build the API. Tests pass their own ``Settings`` (temp DB + storage)."""
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -23,6 +23,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings.storage_dir.mkdir(parents=True, exist_ok=True)
 
     app = FastAPI(
+        lifespan=lifespan,
         title="DataSentinel API",
         version=__version__,
         description="Data quality, drift detection and pipeline intelligence.",
@@ -47,5 +48,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(quality.dataset_quality_router)
     api.include_router(quality.rules_router)
     api.include_router(analysis.router)
+    api.include_router(monitoring.runs_router)
+    api.include_router(monitoring.incidents_router)
+    api.include_router(monitoring.reports_router)
+    api.include_router(monitoring.alert_router)
+    api.include_router(monitoring.scheduler_router)
+    api.include_router(monitoring.lineage_router)
     app.include_router(api)
     return app

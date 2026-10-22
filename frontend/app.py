@@ -49,6 +49,7 @@ with st.sidebar:
 pages = {
     "Monitor": [
         st.Page("pages/overview.py", title="Overview", icon=":material/space_dashboard:", default=True),
+        st.Page("pages/run_history.py", title="Run History", icon=":material/history:"),
         st.Page("pages/datasets.py", title="Datasets", icon=":material/database:"),
         st.Page("pages/quality.py", title="Data Quality", icon=":material/verified:"),
         st.Page("pages/drift.py", title="Drift Monitoring", icon=":material/monitoring:"),
@@ -56,6 +57,8 @@ pages = {
     ],
     "Investigate": [
         st.Page("pages/root_cause.py", title="Root Cause Analysis", icon=":material/manage_search:"),
+        st.Page("pages/incidents.py", title="Incident Center", icon=":material/warning:"),
+        st.Page("pages/lineage.py", title="Data Lineage", icon=":material/account_tree:"),
     ],
     "Configure": [
         st.Page("pages/settings.py", title="Rules & Baselines", icon=":material/tune:"),

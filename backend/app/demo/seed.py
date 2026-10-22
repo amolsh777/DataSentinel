@@ -13,7 +13,7 @@ from app.core.config import PROJECT_ROOT, Settings
 from app.database.base import Base
 from app.database.session import build_engine, build_session_factory, init_db
 from app.demo.sample_data import generate_all
-from app.services import baseline_service, dataset_service, quality_service, storage
+from app.services import baseline_service, dataset_service, lineage_service, quality_service, storage
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,9 @@ def reset_demo(settings: Settings, *, with_v2: bool = False, sample_dir: Path = 
             session, retail.id, 1, reason="Clean Q1 2025 synthetic baseline (demo seed)",
             set_by="demo", confirm=False,
         )
+        # Seed the demo lineage graph (idempotent).
+        dataset_name_to_id = {retail.name: retail.id, customers.name: customers.id}
+        lineage_service.seed_demo_lineage(session, dataset_name_to_id)
         if with_v2:
             dataset_service.add_version(
                 session,

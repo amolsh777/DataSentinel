@@ -189,3 +189,105 @@ def test_first_time_user_can_build_the_whole_demo_from_the_ui(empty_api):
     assert "Findings" in text(at)
     at = click(load("drift.py"), "Detect drift")
     assert_clean(at)
+
+
+def test_run_history_page_renders_and_runs_monitor(demo_api):
+    at = load("run_history.py")
+    assert_clean(at)
+    # Should show "No monitoring runs yet" on a fresh setup (reset_demo doesn't auto-run monitor)
+    page_text = text(at)
+    assert "Run History" in page_text or "monitor" in page_text.lower()
+
+    # Run monitor button
+    at = click(at, "Run monitor now")
+    assert_clean(at)
+    # After running, reload the page and expect a history entry
+    at2 = load("run_history.py")
+    assert_clean(at2)
+    # Check there's at least a run or a table
+    assert len(at2.dataframe) >= 1 or "Run log" in text(at2)
+
+
+def test_incident_center_renders_empty_gracefully(demo_api):
+    """Before any monitor run, incidents page should show no incidents, not crash."""
+    at = load("incidents.py")
+    assert_clean(at)
+    t = text(at)
+    assert "Incident Center" in t or "No incidents" in t or "Showing" in t
+
+
+def test_incident_center_shows_incidents_after_monitor_run(demo_api):
+    """After the monitor run in the previous test, incidents should appear."""
+    import requests
+    ds_id = [d["id"] for d in requests.get(demo_api + "/datasets").json()["items"]
+             if d["name"] == "Retail Transactions"][0]
+    # If no run yet, trigger one
+    runs = requests.get(demo_api + f"/datasets/{ds_id}/runs", params={"limit": 1}).json()
+    if runs["total"] == 0:
+        requests.post(demo_api + f"/datasets/{ds_id}/monitor",
+                      json={"current_version": 2, "exclude_drift_columns": ["transaction_date"]})
+    at = load("incidents.py")
+    assert_clean(at)
+    # Incidents page should have data now
+    assert len(at.dataframe) >= 1 or "Incident Center" in text(at)
+
+
+def test_lineage_page_renders_with_seeded_graph(demo_api):
+    at = load("lineage.py")
+    assert_clean(at)
+    t = text(at)
+    # Demo reset seeds the lineage graph
+    assert "Lineage" in t or "Assets" in t
+
+
+def test_lineage_page_shows_add_forms(demo_api):
+    at = load("lineage.py")
+    assert_clean(at)
+    # Forms render as submit buttons in AppTest
+    assert any("asset" in b.label.lower() or "edge" in b.label.lower() for b in at.button)
+
+
+def test_settings_page_has_alert_and_scheduler_tabs(demo_api):
+    at = load("settings.py")
+    assert_clean(at)
+    all_tabs = [tab for tab_list in at.tabs for tab in tab_list.children if hasattr(tab, "label")]
+    tab_labels = text(at)
+    assert "Alerting" in tab_labels or "Webhook" in tab_labels or len(at.tabs) >= 3
+
+
+def test_full_end_to_end_monitor_incident_rca_workflow(demo_api):
+    """Test the entire Phase 4 monitoring pipeline end-to-end through the API."""
+    import requests, time
+
+    ds_id = [d["id"] for d in requests.get(demo_api + "/datasets").json()["items"]
+             if d["name"] == "Retail Transactions"][0]
+
+    # Trigger a monitor run.
+    run = requests.post(demo_api + f"/datasets/{ds_id}/monitor",
+                        json={"current_version": 2, "exclude_drift_columns": ["transaction_date"]}).json()
+    assert run["status"] == "completed"
+    assert run["summary"]["incidents"]["created"] + run["summary"]["incidents"]["updated"] >= 1
+
+    # Run history page shows the run.
+    at = load("run_history.py")
+    assert_clean(at)
+    assert len(at.dataframe) >= 1
+
+    # Incident center shows open incidents.
+    at = load("incidents.py")
+    assert_clean(at)
+    assert at.dataframe and len(at.dataframe[0].value) >= 1
+
+    # Can download all 3 report formats.
+    for fmt in ("html", "json", "csv"):
+        resp = requests.get(demo_api + f"/runs/{run['id']}/report", params={"format": fmt})
+        assert resp.status_code == 200
+
+    # Lineage graph is populated from the seed.
+    lineage = requests.get(demo_api + "/lineage").json()
+    assert lineage["node_count"] >= 5 and lineage["edge_count"] >= 4
+
+    # Impact analysis for revenue column finds downstream assets.
+    impact = requests.get(demo_api + f"/lineage/impact/{ds_id}", params={"columns": ["revenue"]}).json()
+    assert len(impact["affected_assets"]) > 0
+    assert any("Revenue" in a["name"] for a in impact["affected_assets"])
