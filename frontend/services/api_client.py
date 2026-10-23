@@ -211,3 +211,20 @@ class ApiClient:
 
     def set_schedule(self, dataset_id: str, body: dict) -> dict:
         return self._post(f"/datasets/{dataset_id}/schedule", body)
+
+    # ─────────────────────────────────────── async jobs ───────────────────────
+    def submit_monitor_job(self, dataset_id: str, body: dict = None) -> dict:
+        return self._request("POST", f"/datasets/{dataset_id}/jobs/monitor", json=body or {})
+
+    def get_job(self, job_id: str) -> dict:
+        return self._get(f"/jobs/{job_id}")
+
+    def list_jobs(self, dataset_id: str | None = None, limit: int = 20) -> list:
+        return self._get("/jobs", dataset_id=dataset_id, limit=limit)
+
+    def metrics(self) -> str:
+        try:
+            r = self._session.get(f"{self.base_url}/metrics", timeout=10)
+            return r.text
+        except Exception:
+            return ""

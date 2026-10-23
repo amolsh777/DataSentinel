@@ -43,10 +43,45 @@ with tab_explore:
             prev = state.api(c.preview, ds["id"], ver, n)
             st.caption(f"Showing {len(prev['rows'])} of {prev['total_rows']:,} rows")
             ui.show_df(pd.DataFrame(prev["rows"], columns=prev["columns"]))
+
+
+            dl_col1, dl_col2 = st.columns([1, 4])
+            if dl_col1.button("Download original file", key="dl_file"):
+                try:
+                    content = c._session.get(f"{c.base_url}/datasets/{ds['id']}/versions/{ver}/download",
+                                              timeout=180).content
+                    dl_col2.download_button("Save file", content, vmeta["original_filename"])
+                except Exception as exc:
+                    ui.show_error(exc)
         with t_schema:
             sch = state.api(c.schema, ds["id"], ver)
             ui.show_df(pd.DataFrame(sch["columns"])[["position", "name", "inferred_type", "pandas_dtype", "nullable",
                                                      "missing_pct", "unique_pct", "is_potential_identifier"]])
+            st.markdown("**Override column types** — useful for zip codes, phone numbers and IDs with leading zeros that are wrongly inferred as integers.")
+            cur_overrides = vmeta.get("type_overrides") or {}
+            col_names = [x["name"] for x in sch["columns"]]
+            override_col = st.selectbox("Column to override", ["(select)"] + col_names, key="ov_col")
+            ALLOWED_TYPES = ["auto", "integer", "float", "categorical", "text", "datetime", "boolean"]
+            if override_col != "(select)":
+                cur_type = cur_overrides.get(override_col, "auto")
+                new_type = st.selectbox("New type", ALLOWED_TYPES,
+                                        index=ALLOWED_TYPES.index(cur_type) if cur_type in ALLOWED_TYPES else 0,
+                                        key="ov_type",
+                                        help="'auto' reverts to the inferred type.")
+                if st.button("Apply type override", key="ov_apply"):
+                    try:
+                        from services.api_client import ApiError
+                        result = c._request("PATCH",
+                            f"/datasets/{ds['id']}/versions/{ver}/type-overrides",
+                            json={override_col: new_type})
+                        st.success(f"'{override_col}' will be treated as {new_type} from the next analysis run. "
+                                   "(Parquet cache cleared — next load re-parses the file.)")
+                        st.rerun()
+                    except Exception as exc:
+                        ui.show_error(exc)
+            if cur_overrides:
+                st.caption("Active overrides: " + ", ".join(f"{k} → {v}" for k, v in cur_overrides.items()))
+
         profile = state.api(c.profile, ds["id"], ver)
         with t_cols:
             cols = profile["columns"]

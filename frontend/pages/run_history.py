@@ -83,7 +83,18 @@ excl_cols = [x["name"] for x in state.api(c.schema, ds["id"], cur)["columns"]
              if x["inferred_type"] == "datetime"]
 exclude = st.multiselect("Exclude from drift", [x["name"] for x in state.api(c.schema, ds["id"], cur)["columns"]],
                          default=excl_cols, key="rh_excl")
-if st.button("Run monitor now", type="primary"):
+col_sync, col_async = st.columns(2)
+if col_async.button("Submit as background job (recommended)", type="primary",
+                    help="Returns immediately; poll status from the jobs list above."):
+    try:
+        job = c.submit_monitor_job(ds["id"], {"current_version": cur, "reference_version": ref,
+                                               "exclude_drift_columns": exclude})
+        st.success(f"Job submitted: `{job['job_id'][:12]}…` — poll `GET /api/v1/jobs/{job['job_id']}`")
+        st.rerun()
+    except Exception as exc:
+        ui.show_error(exc)
+
+if col_sync.button("Run now (synchronous)", help="Waits in the browser. Use for small datasets."):
     with st.spinner("Running — this may take a moment…"):
         try:
             run = c.monitor(ds["id"], {"current_version": cur, "reference_version": ref,
@@ -92,3 +103,19 @@ if st.button("Run monitor now", type="primary"):
             st.rerun()
         except Exception as exc:
             ui.show_error(exc)
+
+# Job list for this dataset
+with st.expander("Recent background jobs for this dataset", expanded=False):
+    try:
+        jobs = c.list_jobs(ds["id"], limit=10)
+        if jobs:
+            ui.show_df(pd.DataFrame([{
+                "job_id": j["job_id"][:12], "type": j["job_type"], "status": j["status"],
+                "queued": j.get("queued_at","")[:16], "finished": (j.get("finished_at") or "")[:16],
+                "error": j.get("error_message","")[:60],
+            } for j in jobs]))
+        else:
+            st.caption("No jobs yet.")
+    except Exception as exc:
+        ui.show_error(exc)
+

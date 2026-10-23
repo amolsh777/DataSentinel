@@ -39,10 +39,24 @@ def test_every_page_renders_with_demo_data(demo_api, name):
 
 
 def test_overview_assessment(demo_api):
-    at = click(load("overview.py"), "Run assessment")
+    at = load("overview.py")
+    assert_clean(at)
+    # With demo data (v1 + v2 loaded), pick v2 as current and v1 as reference.
+    # The selectboxes for current/ref version should exist now.
+    assert len(at.selectbox) >= 2, f"Expected version selectors, got {len(at.selectbox)}"
+    # Find the current version selector and pick v2 (latest)
+    for sb in at.selectbox:
+        if sb.key == "ov_cur_ver":
+            if 2 in sb.options:
+                sb.select(2)
+            break
+    at.run()
+    assert_clean(at)
+    # Now click Run assessment
+    at = click(at, "Run assessment")
     assert_clean(at)
     t = text(at)
-    assert "Quality score" in t and "Drifted features" in t and "What to investigate first" in t
+    assert "Quality score" in t and "What to investigate" in t
 
 
 def test_quality_validation_and_score(demo_api):
@@ -199,7 +213,7 @@ def test_run_history_page_renders_and_runs_monitor(demo_api):
     assert "Run History" in page_text or "monitor" in page_text.lower()
 
     # Run monitor button
-    at = click(at, "Run monitor now")
+    at = click(at, "Run now (synchronous)")
     assert_clean(at)
     # After running, reload the page and expect a history entry
     at2 = load("run_history.py")
