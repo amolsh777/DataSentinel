@@ -1,0 +1,86 @@
+version: "3.9"
+
+# ── DataSentinel — full stack ────────────────────────────────────────────────
+# Quick start:
+#   docker compose up
+#   open http://localhost:8501
+#
+# With PostgreSQL (production-like):
+#   docker compose --profile postgres up
+#
+# Environment overrides via .env (copy from .env.example):
+#   DS_MAX_UPLOAD_MB, DS_CORS_ORIGINS, etc.
+
+services:
+
+  # ── backend (FastAPI + APScheduler) ──────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: datasentinel-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DS_APP_ENV: "${DS_APP_ENV:-development}"
+      DS_LOG_LEVEL: "${DS_LOG_LEVEL:-INFO}"
+      DS_DATABASE_URL: "${DS_DATABASE_URL:-sqlite:////app/data/datasentinel.db}"
+      DS_STORAGE_DIR: /app/data/storage
+      DS_MAX_UPLOAD_MB: "${DS_MAX_UPLOAD_MB:-50}"
+      DS_MAX_ROWS: "${DS_MAX_ROWS:-1000000}"
+      DS_CORS_ORIGINS: "http://localhost:8501,http://127.0.0.1:8501,http://frontend:8501"
+    volumes:
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ── frontend (Streamlit) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: datasentinel-frontend
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      DS_API_URL: "http://backend:8000/api"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── PostgreSQL (optional — activate with --profile postgres) ──────────────
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: datasentinel
+      POSTGRES_USER: datasentinel
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-change-me-in-production}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datasentinel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  app_data:
+  pg_data:

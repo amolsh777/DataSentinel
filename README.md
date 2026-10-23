@@ -1,255 +1,404 @@
 # DataSentinel
 
-**AI-assisted data quality, drift detection & pipeline intelligence platform.**
+**AI-assisted data quality, drift detection and pipeline intelligence platform.**
 
-DataSentinel catches *silent* data failures — schema changes, missing data,
+DataSentinel catches silent data failures — schema changes, missing data,
 duplicates, invalid values and distribution drift — before dashboards and ML
-models quietly start using bad data, and traces which downstream assets are
-affected.
+models quietly start using bad data. It traces which downstream assets are
+affected, explains why the failure happened, and tells you exactly what to do.
 
-> **Status: Phase 3 of 7 complete, plus a working dashboard** — foundation, ingestion,
-> profiling, synthetic demo data, validation engine, schema drift, baselines, statistical
-> drift, configurable quality score, root-cause analysis, and a **Streamlit frontend**
-> that exercises all of it. Monitoring runs, incidents and lineage come next; their
-> pages will be added with them. See [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
-> and the full plan in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+---
 
-## What works now
+## Prerequisites — read this before anything else
 
-- Upload CSV or Excel (with sheet selection) → strict validation with clear error codes
-- Every upload becomes an immutable, versioned dataset; raw files are stored on disk, metadata in SQLite/PostgreSQL
-- Automatic profiling: semantic type inference, invalid values, missingness, duplicates,
-  numeric/date/category statistics, constant and identifier detection, and an explainable quality score
-- REST API with interactive docs at `/docs`
-- Deterministic synthetic demo datasets with 9 documented, intentionally injected issues
-- **Validation engine** with 12 configurable rule types, pass/warn/fail/skipped outcomes and
-  evidence for every result (counts, percentages, example values and row positions)
-- **Rule suggestions** learned from a clean version (types, keys, allowed categories,
-  completeness, non-negativity) — see [`docs/RULES.md`](docs/RULES.md)
-- **Safe business rules** such as `abs(revenue - quantity * unit_price) <= 0.01`, evaluated
-  through a whitelisted AST walker (user text is never executed)
-- **Schema drift**: added/removed columns, evidence-based rename *candidates*, type and storage
-  changes, nullability/missingness, lost key uniqueness, new/vanished categories — each labelled
-  breaking or compatible, with a side-by-side column comparison
-- **Baselines** with an audit trail: every approval records a reason and who; replacing one
-  needs explicit confirmation and the old one is kept as history
-- **Statistical drift**: PSI, KS, normalised Wasserstein, Jensen-Shannon and chi-square, chosen per
-  feature type, with minimum sample sizes, Benjamini-Hochberg correction and configurable
-  thresholds. **Effect size decides the verdict; p-values never do.** See [`docs/DRIFT.md`](docs/DRIFT.md)
-- **Transparent quality score**: completeness, validity, uniqueness, consistency and accuracy with
-  configurable weights and thresholds; every dimension shows the rules behind it. Accuracy is
-  `not_evaluated` unless trusted reference data is configured
-- **Root-cause analysis**: for each issue, evidence from current and baseline data, ranked
-  *hypotheses* (never stated as fact, each backed by observed evidence), investigation steps and
-  corrective actions. Deterministic, no LLM needed. See [`docs/RCA.md`](docs/RCA.md)
-- **Streamlit dashboard** (7 pages, Plotly charts) covering every feature above — see [`frontend/README.md`](frontend/README.md)
-- 227 backend tests + 21 frontend tests
+| Requirement | Version | Why |
+|-------------|---------|-----|
+| **Python** | **3.11 or 3.12 only** | `pandas`, `numpy`, `scipy` and `pyarrow` do not yet have pre-built Windows wheels for Python 3.13 or 3.14. Using a newer Python version will cause compile errors with Visual Studio not found. |
+| pip | any recent | comes with Python |
+| Git (optional) | any | only needed if you cloned instead of unzipping |
 
-## Quick start (Windows PowerShell)
-
-Requires **Python 3.11 or 3.12** (`py --list` shows installed versions).
+**Check which Python versions you have installed:**
 
 ```powershell
-# 1. Unzip, then open PowerShell in the project folder
-cd datasentinel
+py --list
+```
 
-# 2. Create and activate a virtual environment
+If you see only 3.13 or 3.14, download Python 3.12 from
+https://www.python.org/downloads/release/python-3128/ (Windows installer 64-bit).
+You do not need to uninstall your existing Python — both can coexist.
+
+---
+
+## First-time setup (Windows PowerShell)
+
+Run every command from the **repository root** (`C:\...\datasentinel`) unless told otherwise.
+
+### Step 1 — Create a virtual environment with Python 3.12
+
+```powershell
 py -3.12 -m venv .venv
+```
+
+If you get `Access is denied` deleting a previous `.venv`, close all terminals
+first, then run the command again.
+
+### Step 2 — Activate the virtual environment
+
+```powershell
 .\.venv\Scripts\Activate.ps1
-# If activation is blocked:  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
 
-# 3. Install dependencies
-python -m pip install --upgrade pip
+If you see `cannot be loaded because running scripts is disabled`, run this
+once and then try again:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Your prompt should now start with `(.venv)`. Every command below assumes the
+venv is active.
+
+### Step 3 — Install all dependencies
+
+```powershell
+pip install --upgrade pip
+pip install -r backend\requirements.txt
 pip install -r backend\requirements-dev.txt
+pip install -r frontend\requirements.txt
+```
 
-# 4. Configuration (optional — defaults work out of the box)
-Copy-Item .env.example .env
+This installs everything in one go. It should complete without any compile
+errors on Python 3.12. If you see `Microsoft Visual Studio not found` or
+`meson setup failed`, you are on the wrong Python version — check with
+`python --version` and restart from Step 1 using `py -3.12`.
 
-# 5. Generate sample data and seed the demo database
-python scripts\reset_demo.py --yes
+### Step 4 — Run the database migrations
 
-# 6. Run the tests
+The project uses Alembic to manage database schema changes. You must run this
+before starting the server. Run it from inside the `backend\` folder:
+
+```powershell
+cd backend
+alembic upgrade head
+cd ..
+```
+
+**If you see `table datasets already exists`**, your database was created by
+an older version of the code. Run these two commands instead:
+
+```powershell
+cd backend
+alembic stamp 403b0276a9fa
+alembic upgrade head
+cd ..
+```
+
+You should see output ending with:
+```
+Running upgrade 403b0276a9fa -> 11de94d5e42b, parquet_cache_jobs_softdelete_type_overrides
+```
+
+### Step 5 — Load the demo data
+
+```powershell
+python scripts\reset_demo.py --yes --with-v2
+```
+
+This creates the database, generates synthetic datasets, registers them,
+configures 36 validation rules, approves a baseline, and loads the
+intentionally broken v2 file so every feature works immediately.
+
+### Step 6 — Verify with tests (optional but recommended)
+
+```powershell
 cd backend
 python -m pytest
-
-# 7. Start the API (still inside backend\)
-uvicorn app.asgi:app --reload --port 8000
+cd ..
 ```
 
-Open **http://127.0.0.1:8000/docs** to try every endpoint from the browser.
+All tests should pass. If you see import errors, re-check Step 3.
 
-### Dashboard
+---
+
+## Running the application
+
+You need **two terminals**, both with the venv active.
+
+### Terminal 1 — Backend API
 
 ```powershell
-# from the repository root, in the same virtual environment (two terminals: backend + frontend)
+cd C:\...\datasentinel\backend
+.\.venv\Scripts\Activate.ps1
+uvicorn app.asgi:app --port 8000 --reload
+```
+
+You should see:
+```
+INFO:     Uvicorn running on http://127.0.0.1:8000
+INFO:     Application startup complete.
+```
+
+Leave this terminal open. The API is now available at http://127.0.0.1:8000.
+Interactive API docs: http://127.0.0.1:8000/docs
+
+### Terminal 2 — Frontend dashboard
+
+Open a new PowerShell window:
+
+```powershell
+cd C:\...\datasentinel
+.\.venv\Scripts\Activate.ps1
+streamlit run frontend\app.py
+```
+
+You should see:
+```
+You can now view your Streamlit app in your browser.
+Local URL: http://localhost:8501
+```
+
+Open http://localhost:8501 in your browser. The backend (Terminal 1) must be
+running before the frontend can do anything useful.
+
+---
+
+## First time in the dashboard
+
+1. Open http://localhost:8501
+2. The sidebar shows **Retail Transactions** as the active dataset (loaded by the demo reset)
+3. Go to **Overview** and click **Run assessment** — pick v2 as current and v1 as reference
+4. Go to **Run History** and click **Run now (synchronous)** to run a full monitoring check
+5. Go to **Incident Center** to see the issues detected
+6. Go to **Data Lineage** to see the pre-seeded dependency graph
+7. Go to **Rules & Baselines** to see the 36 configured rules
+
+The full user guide for every page and every option is in [`docs/RUNit.md`](docs/RUNit.md).
+
+---
+
+## Starting again from scratch
+
+If anything goes wrong and you want a completely clean state:
+
+```powershell
+cd C:\...\datasentinel\backend
+alembic downgrade base
+cd ..
+python scripts\reset_demo.py --yes --with-v2
+```
+
+Or to also wipe stored files:
+
+```powershell
+Remove-Item -Recurse -Force data\storage\*
+Remove-Item -Force data\datasentinel.db
+cd backend
+alembic upgrade head
+cd ..
+python scripts\reset_demo.py --yes --with-v2
+```
+
+---
+
+## Troubleshooting
+
+### `no such column: datasets.is_deleted`
+The database is missing columns added by a later migration. Fix:
+```powershell
+cd backend
+alembic stamp 403b0276a9fa
+alembic upgrade head
+```
+
+### `table datasets already exists`
+Same root cause. Run the `stamp` command above and then `alembic upgrade head`.
+
+### `ModuleNotFoundError: No module named 'pandas'` (or numpy, scipy, etc.)
+Either the venv is not active or you installed into the wrong Python. Check:
+```powershell
+python --version        # must say 3.11 or 3.12
+where python            # must point inside your .venv folder
+```
+Then re-run Step 3.
+
+### `pandas fails to install` / `meson setup failed` / `vswhere.exe not found`
+You are on Python 3.13 or 3.14. Install Python 3.12 from python.org and
+restart from Step 1 using `py -3.12 -m venv .venv`.
+
+### `ModuleNotFoundError: No module named 'requests'` (or jinja2, pyarrow, apscheduler)
+These are in `frontend\requirements.txt`. Run:
+```powershell
 pip install -r frontend\requirements.txt
-streamlit run frontend\app.py        # http://localhost:8501
 ```
 
-The backend must be running (step 7). Details, page guide and frontend tests: [`frontend/README.md`](frontend/README.md).
-
-### Try it from PowerShell
-
+### `Activate.ps1 cannot be loaded`
 ```powershell
-# Health
-Invoke-RestMethod http://127.0.0.1:8000/api/health
-
-# List datasets (Retail Transactions + Customer Master after the reset)
-Invoke-RestMethod http://127.0.0.1:8000/api/datasets | ConvertTo-Json -Depth 5
-
-# Upload the modified v2 as a new version (use curl.exe, not the PowerShell alias)
-$id = (Invoke-RestMethod "http://127.0.0.1:8000/api/datasets?search=Retail").items[0].id
-curl.exe -F "file=@..\data\sample\retail_transactions_v2.csv" "http://127.0.0.1:8000/api/datasets/$id/versions"
-
-# Compare profiles
-Invoke-RestMethod "http://127.0.0.1:8000/api/datasets/$id/profile?version=2" | ConvertTo-Json -Depth 6
-
-# Validate v2 with the rules the reset configured (v1 = reference for schema checks)
-$r = Invoke-RestMethod -Method Post "http://127.0.0.1:8000/api/datasets/$id/versions/2/validate?reference_version=1"
-$r.summary.status
-$r.summary.top_issues | Format-Table outcome, severity, message -Wrap
-
-# Drift v2 vs the baseline the reset approved (v1)
-$d = Invoke-RestMethod -Method Post "http://127.0.0.1:8000/api/datasets/$id/drift" -ContentType "application/json" `
-  -Body '{"current_version": 2, "exclude_columns": ["transaction_date"]}'
-$d.features | Format-Table status, severity, name -AutoSize
-
-# Quality score with its breakdown
-$s = Invoke-RestMethod -Method Post "http://127.0.0.1:8000/api/datasets/$id/score" -ContentType "application/json" -Body '{"current_version": 2}'
-$s.score.score; $s.score.dimensions.PSObject.Properties | ForEach-Object { "{0,-13}{1}" -f $_.Name, $_.Value.score }
-
-# Root-cause analysis
-$r = Invoke-RestMethod -Method Post "http://127.0.0.1:8000/api/datasets/$id/root-cause" -ContentType "application/json" -Body '{"current_version": 2}'
-$r.findings | Select-Object -First 3 | ForEach-Object { $_.issue_name; $_.hypotheses | ForEach-Object { "  [$($_.likelihood)] $($_.cause)" } }
-
-# Schema comparison v1 -> v2
-$d = Invoke-RestMethod "http://127.0.0.1:8000/api/datasets/$id/schema-diff?reference=1&current=2"
-$d.changes | Format-Table severity, change_type, columns, breaking -AutoSize
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-Expected on the synthetic data: v1 is `healthy` (47 checks pass); v2 is `failing`
-with 10 failures, 2 warnings and 4 checks *skipped with reasons* (they reference the
-removed `discount_pct` column).
+### `ModuleNotFoundError: No module named 'app'` in pytest
+You must run pytest from inside the `backend\` folder:
+```powershell
+cd backend
+python -m pytest
+```
 
-macOS/Linux: replace step 2 with `python3 -m venv .venv && source .venv/bin/activate`
-and use forward slashes.
+### `Cannot reach the DataSentinel API` in the browser
+The backend is not running. Start it in Terminal 1 as described above.
 
-## Configuration
+### `Cannot remove item python.exe: Access is denied`
+Close all terminals that have the venv active, then delete the `.venv` folder.
 
-All settings come from environment variables prefixed `DS_` or a `.env` file
-in the repository root. See [`.env.example`](.env.example).
+### `curl` behaves oddly in PowerShell
+Use `curl.exe` (with the `.exe`) to call the real curl, not the PowerShell alias.
 
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `DS_DATABASE_URL` | `sqlite:///data/datasentinel.db` | SQLAlchemy URL; relative SQLite paths resolve from the repo root |
-| `DS_STORAGE_DIR` | `data/storage` | Where uploaded files are kept |
-| `DS_MAX_UPLOAD_MB` | `50` | Upload size limit |
-| `DS_MAX_ROWS` / `DS_MAX_COLUMNS` | `1000000` / `500` | Parsing limits |
-| `DS_PROFILE_SAMPLE_ROWS` | `200000` | Column statistics use a reproducible sample above this |
-| `DS_CORS_ORIGINS` | `http://localhost:8501,...` | Allowed frontend origins |
-
-## API
-
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET | `/api/health` | Liveness + database check |
-| POST | `/api/files/inspect` | Validate & preview a file without saving (sheet list for Excel) |
-| POST | `/api/datasets` | Register a dataset; file becomes version 1 |
-| GET | `/api/datasets` | List with `limit`, `offset`, `project`, `search` |
-| GET | `/api/datasets/{id}` | Detail with versions and latest profile summary |
-| GET / POST | `/api/datasets/{id}/versions` | List / upload versions |
-| GET | `/api/datasets/{id}/profile?version=N` | Full profile (latest if omitted) |
-| GET | `/api/datasets/{id}/versions/{n}/schema` | Schema snapshot |
-| GET | `/api/datasets/{id}/versions/{n}/preview?rows=20` | First rows (max 100) |
-| GET / POST | `/api/rules` | List (`dataset_id`, `include_global`) / create a validation rule |
-| GET / PATCH / DELETE | `/api/rules/{rule_id}` | Read / partially update / delete a rule |
-| POST | `/api/datasets/{id}/rules/suggest?version=N&save=true` | Suggest rules from a version's profile (optionally save) |
-| POST | `/api/datasets/{id}/versions/{n}/validate?reference_version=M` | Run enabled rules now (not persisted until Phase 4) |
-| GET | `/api/datasets/{id}/schema-diff?reference=M&current=N` | Schema comparison with breaking/compatible labels |
-| GET | `/api/datasets/{id}/baselines` | Baseline history (active and replaced) |
-| POST | `/api/datasets/{id}/baseline` | Approve a baseline (`reason` required; `confirm` to replace) |
-| POST | `/api/datasets/{id}/drift` | Statistical drift vs baseline or an explicit reference |
-| POST | `/api/datasets/{id}/score` | Configurable quality score with per-dimension breakdown |
-| POST | `/api/datasets/{id}/score/compare` | Score two versions and show per-dimension change |
-| POST | `/api/datasets/{id}/root-cause` | Evidence-backed hypotheses, investigation steps, corrective actions |
-
-Errors always look like `{"error": {"code": "DUPLICATE_COLUMNS", "message": "...", "details": {...}}}`.
-
-## Quality scores
-
-DataSentinel has two scores, deliberately separate:
-
-- **Profile score** (computed at upload, below): a quick intrinsic summary with no rules needed.
-- **Rule-based quality score** (`/score`): driven by *your configured rules*, with adjustable
-  weights and thresholds. Full methodology in [`docs/DRIFT.md`](docs/DRIFT.md).
-
-### Profile score methodology
-
-A transparent heuristic (0–100), always shown with its breakdown:
-
-| Component | Weight | Measures |
-|-----------|-------:|----------|
-| Completeness | 40 | 1 − missing cells / total cells |
-| Uniqueness | 20 | 1 − duplicate rows / rows |
-| Validity | 25 | 1 − mean share of values that don't fit the column's inferred type |
-| Consistency | 15 | 1 − constant or empty columns / columns |
-
-It summarises evidence; it is **not** a calibrated probability. Schema changes,
-drift and rule failures are reported separately (Phases 2–4), which is why the
-synthetic v2 file still scores ~98.5 on intrinsic quality alone.
-
-## Demo data (synthetic)
-
-`python scripts\generate_sample_data.py` writes deterministic files to
-`data/sample/`. `retail_transactions_v2.csv` contains nine documented issues
-(new/removed columns, a type change, rising missingness, price and age shifts,
-unseen categories, duplicates, negative revenue, unknown customer IDs) —
-see `data/sample/manifest.json`.
-
-`python scripts\reset_demo.py --yes` regenerates samples, wipes the local
-database and stored files, registers *Retail Transactions* (v1) and
-*Customer Master*, and configures 36 validation rules for Retail Transactions
-(34 suggested from v1 plus a revenue-formula rule and a customer-exists check).
-It also approves v1 as the Retail Transactions baseline, so drift, score and
-root-cause calls work immediately. Add `--with-v2` to pre-upload the modified version.
+---
 
 ## Project layout
 
 ```
-backend/app/   api · core · database · models · schemas · services · analytics · demo · utils
-backend/tests/ pytest suite
-data/sample/   synthetic datasets + manifest
-docs/          ARCHITECTURE.md, CHECKLIST.md, RULES.md, DRIFT.md, RCA.md
-scripts/       generate_sample_data.py, reset_demo.py
-frontend/      Streamlit dashboard (pages, components, REST client, AppTest suite)
+datasentinel\
+  backend\
+    app\
+      api\          REST endpoints
+      analytics\    profiling, drift, quality checks, RCA, severity
+      core\         config, logging, middleware, errors
+      database\     SQLAlchemy session, base model
+      models\       ORM models (dataset, monitoring, lineage)
+      schemas\      Pydantic request/response models
+      services\     business logic (dataset, monitoring, lineage, alerts, scheduler...)
+      demo\         sample data generator and seed script
+    alembic\        database migrations
+    tests\          318 pytest tests
+    requirements.txt
+    requirements-dev.txt
+  frontend\
+    app.py          Streamlit entry point and navigation
+    pages\          one file per page (overview, datasets, quality, drift, schema,
+                    root_cause, incidents, lineage, run_history, settings)
+    components\     ui.py, charts.py, state.py
+    services\       api_client.py
+    tests\          28 AppTest tests
+    requirements.txt
+  data\
+    sample\         synthetic demo datasets and manifest.json
+    storage\        uploaded files (not committed)
+  docs\
+    RUNit.md        complete user guide — start here
+    RULES.md        validation rule types and parameters
+    DRIFT.md        drift methods, baselines and quality score
+    RCA.md          root-cause analysis reference
+    ARCHITECTURE.md system design
+    CHECKLIST.md    phase-by-phase build tracker
+  scripts\
+    reset_demo.py   wipe and reseed the demo database
+    generate_sample_data.py  regenerate synthetic CSV files
+  Dockerfile              backend container
+  Dockerfile.frontend     frontend container
+  docker-compose.yml      full stack (backend + frontend + optional PostgreSQL)
+  .env.example            all environment variables with defaults
+  .github\workflows\ci.yml  GitHub Actions CI
 ```
 
-## Troubleshooting
+---
 
-- **`Activate.ps1 cannot be loaded`** — run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
-- **`ModuleNotFoundError: No module named 'app'`** — run `pytest`/`uvicorn` from inside `backend\`.
-- **pandas fails to install** — use Python 3.11/3.12; very new Python versions may lack wheels.
-- **`curl` behaves oddly in PowerShell** — call `curl.exe` explicitly.
-- **Stale or broken local state** — `python scripts\reset_demo.py --yes`.
+## Configuration
 
-## Limitations (current phase)
+Copy `.env.example` to `.env` and edit as needed. All variables are optional —
+the defaults work for local development.
 
-- No persisted monitoring runs, incidents or lineage yet (Phases 4–5); the dashboard has no pages for them
-  until they exist. The dashboard has been tested headlessly, not inspected visually in a browser.
-- Validation, drift, score and root-cause results are computed on request and not stored yet
-  (Phase 4 adds persisted runs, so score history across runs arrives then; today you can compare
-  two versions with `/score/compare`).
-- Drift re-reads the stored reference file rather than a stored summary.
-- The rule-based score is driven by affected percentages, so a few severe failures cost little;
-  read the dimension breakdown and the check results, not just the number.
-- Root-cause hypotheses come from a fixed pattern catalogue and can only suggest causes the data
-  hints at; a person must confirm them.
-- Category changes are compared on the stored top-20 values per column; truncated lists are marked `certain: false`.
-- Type inference is heuristic (e.g. zip codes are inferred as integers).
-- Schema is created with `create_all`; Alembic migrations are deferred.
-- `.xls` (legacy Excel) is not supported; save as `.xlsx`.
-- SQL-database ingestion, authentication and PDF export are deferred features.
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `DS_DATABASE_URL` | `sqlite:///data/datasentinel.db` | Any SQLAlchemy URL. Use `postgresql+psycopg://user:pass@host/db` for production |
+| `DS_STORAGE_DIR` | `data/storage` | Where uploaded files are stored on disk |
+| `DS_MAX_UPLOAD_MB` | `50` | Maximum upload size |
+| `DS_MAX_ROWS` | `1000000` | Maximum rows parsed per file |
+| `DS_PROFILE_SAMPLE_ROWS` | `200000` | Rows used for column statistics on large files |
+| `DS_CORS_ORIGINS` | `http://localhost:8501,...` | Comma-separated allowed frontend origins |
+| `DS_LOG_LEVEL` | `INFO` | Log verbosity (DEBUG, INFO, WARNING, ERROR) |
+| `DS_APP_ENV` | `development` | Set to `production` to enable the startup safety guard |
+| `DS_SMTP_HOST` | *(unset)* | SMTP server for email alerts |
 
-## Screenshots
+---
 
-*Run the dashboard and add screenshots here.*
+## Docker (alternative to the manual setup above)
+
+If you have Docker Desktop installed you can skip all the Python setup:
+
+```powershell
+docker compose up
+```
+
+Then open http://localhost:8501. The backend runs on port 8000.
+
+To also start a PostgreSQL database instead of SQLite:
+
+```powershell
+docker compose --profile postgres up
+```
+
+---
+
+## API quick reference
+
+Interactive docs with request/response examples: http://127.0.0.1:8000/docs
+
+| Method | Path | What it does |
+|--------|------|-------------|
+| GET | `/api/health` | Liveness and database check |
+| POST | `/api/datasets` | Upload a new dataset (CSV or Excel) |
+| GET | `/api/datasets` | List datasets (`search`, `project`, `limit`, `offset`) |
+| GET | `/api/datasets/{id}` | Full detail with versions and profile summary |
+| POST | `/api/datasets/{id}/versions` | Upload a new version of an existing dataset |
+| GET | `/api/datasets/{id}/versions/{n}/download` | Download the original uploaded file |
+| GET | `/api/datasets/{id}/profile` | Full column profiles (latest version or `?version=N`) |
+| GET | `/api/datasets/{id}/versions/{n}/schema` | Schema snapshot |
+| GET | `/api/datasets/{id}/versions/{n}/preview` | First rows (`?rows=25`, max 100) |
+| PATCH | `/api/datasets/{id}/versions/{n}/type-overrides` | Override inferred column types |
+| DELETE | `/api/datasets/{id}?confirm=true` | Soft-delete a dataset |
+| PATCH | `/api/datasets/{id}/restore` | Restore a soft-deleted dataset |
+| POST | `/api/datasets/{id}/baseline` | Approve a version as the baseline |
+| GET | `/api/datasets/{id}/baselines` | Baseline history |
+| GET/POST | `/api/rules` | List or create validation rules |
+| GET/PATCH/DELETE | `/api/rules/{id}` | Read, update or delete a rule |
+| POST | `/api/datasets/{id}/rules/suggest` | Learn rules from a version (`?save=true` to persist) |
+| POST | `/api/datasets/{id}/versions/{n}/validate` | Run validation rules (not persisted) |
+| GET | `/api/datasets/{id}/schema-diff` | Schema comparison (`?reference=1&current=2`) |
+| POST | `/api/datasets/{id}/drift` | Statistical drift vs baseline or explicit reference |
+| POST | `/api/datasets/{id}/score` | Configurable quality score |
+| POST | `/api/datasets/{id}/score/compare` | Compare scores across two versions |
+| POST | `/api/datasets/{id}/root-cause` | Root-cause analysis |
+| POST | `/api/datasets/{id}/monitor` | Full monitoring run (persists results + incidents) |
+| GET | `/api/datasets/{id}/runs` | Run history |
+| GET | `/api/datasets/{id}/runs/history` | Condensed run timeline for the dashboard |
+| GET | `/api/datasets/{id}/runs/{run_id}` | Run detail with check and drift results |
+| GET | `/api/runs/{run_id}/report` | Download report (`?format=html`, `json` or `csv`) |
+| GET | `/api/incidents` | All incidents (filter by dataset, status, severity, type) |
+| GET | `/api/incidents/{id}` | Incident detail with lineage impact |
+| PATCH | `/api/incidents/{id}` | Update incident status |
+| GET | `/api/incidents/{id}/history` | Status change audit trail |
+| GET | `/api/lineage` | Full lineage graph |
+| POST | `/api/lineage` | Create an asset |
+| POST | `/api/lineage/edges` | Create a dependency edge |
+| GET | `/api/lineage/impact/{dataset_id}` | Affected downstream assets for given columns |
+| POST | `/api/datasets/{id}/alerts/test` | Send a test webhook alert |
+| POST | `/api/datasets/{id}/schedule` | Set automatic monitoring schedule |
+| GET | `/api/datasets/{id}/schedule` | Get current schedule |
+| POST | `/api/v1/datasets/{id}/jobs/monitor` | Submit monitoring as a background job |
+| GET | `/api/v1/jobs/{job_id}` | Poll a background job |
+| GET | `/api/v1/jobs` | List recent jobs |
+| GET | `/api/metrics` | Prometheus metrics |
+
+All errors return `{"error": {"code": "ERROR_CODE", "message": "...", "details": {...}}}`.
+Both `/api/` and `/api/v1/` prefixes work on every endpoint.
+
+---
+
+## Known limitations
+
+- Python 3.13 and 3.14 are not supported (no pre-built wheels for the scientific stack).
+- `.xls` (old Excel format) is not supported — save as `.xlsx`.
+- SQL database ingestion (PostgreSQL/MySQL as a data source) is not yet implemented.
+- Authentication and user accounts are not implemented — `set_by` fields are free text.
+- PDF report export is not yet implemented (HTML, JSON and CSV work).
+- The Streamlit dashboard has been tested headlessly; visual appearance depends on your browser.
