@@ -33,6 +33,8 @@ class Dataset(Base):
     project: Mapped[str | None] = mapped_column(String(120), index=True)
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)  # also holds __ds_schedule__ JSON
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)  # soft-delete
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -69,6 +71,9 @@ class DatasetVersion(Base):
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
     ingestion_warnings: Mapped[list[str]] = mapped_column(JSON, default=list)
+    parquet_path: Mapped[str | None] = mapped_column(String(500))  # cached Parquet relative path
+    type_overrides: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)  # col -> inferred_type
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)  # soft-delete
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     dataset: Mapped[Dataset] = relationship(back_populates="versions")

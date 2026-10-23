@@ -42,6 +42,48 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:8501,http://127.0.0.1:8501"
 
+    # SMTP for email alerts (all optional)
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+
+    # Rate limiting
+    rate_limit_upload: str = "10/minute"
+    rate_limit_analysis: str = "30/minute"
+
+    # Production guard: refuse start with weak settings in production mode
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
+    def check_production_safety(self) -> list[str]:
+        """Return a list of config problems that are unsafe for production.
+
+        Called at startup; raises SystemExit when in production mode with problems.
+        """
+        issues: list[str] = []
+        if not self.is_production:
+            return issues  # only enforce in production
+        if "localhost" in self.cors_origins or "127.0.0.1" in self.cors_origins:
+            issues.append(
+                "DS_CORS_ORIGINS contains localhost — "
+                "set it to your actual frontend domain in production."
+            )
+        if self.is_sqlite:
+            issues.append(
+                "DS_DATABASE_URL is SQLite — "
+                "use PostgreSQL in production for concurrent write safety."
+            )
+        if self.smtp_host is None:
+            issues.append(
+                "DS_SMTP_HOST is not set — "
+                "email alerts will not work in production."
+            )
+        return issues
+
+
+
     @field_validator("database_url")
     @classmethod
     def _resolve_sqlite_path(cls, value: str) -> str:

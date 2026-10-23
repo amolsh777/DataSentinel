@@ -178,3 +178,72 @@ def preview_version(
         rows=dataframe_records(df.head(n)),
         total_rows=len(df),
     )
+
+
+@router.delete("/{dataset_id}", status_code=200, responses=_ERRORS)
+def soft_delete_dataset(
+    dataset_id: str,
+    confirm: bool = Query(False, description="Must be true to delete."),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+) -> dict:
+    """Soft-delete a dataset (hidden from lists; recoverable). Pass confirm=true."""
+    from app.core.errors import AppError
+    if not confirm:
+        raise AppError("Pass confirm=true to delete a dataset.", code="CONFIRMATION_REQUIRED")
+    dataset = svc.get_dataset(db, dataset_id)
+    import datetime
+    dataset.is_deleted = True
+    dataset.deleted_at = datetime.datetime.now(datetime.timezone.utc)
+    db.commit()
+    return {"deleted": True, "id": dataset_id}
+
+
+@router.patch("/{dataset_id}/restore", responses=_ERRORS)
+def restore_dataset(dataset_id: str, db: Session = Depends(get_db)) -> DatasetOut:
+    """Restore a soft-deleted dataset."""
+    dataset = db.get(Dataset, dataset_id)
+    if dataset is None:
+        raise NotFoundError(f"Dataset '{dataset_id}' not found.")
+    dataset.is_deleted = False
+    dataset.deleted_at = None
+    db.commit()
+    db.refresh(dataset)
+    return _dataset_out(dataset)
+
+
+@router.get("/{dataset_id}/versions/{version_number}/download", responses=_ERRORS)
+def download_version_file(
+    dataset_id: str, version_number: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+) -> Response:
+    """Download the original uploaded file for a dataset version."""
+    from fastapi.responses import Response as FastAPIResponse
+    dataset = svc.get_dataset(db, dataset_id)
+    version = svc.get_version(db, dataset_id, version_number)
+    from app.services import storage
+    content = storage.read_version_file(settings, version.storage_path)
+    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if version.file_format == "excel" else "text/csv"
+    return FastAPIResponse(content=content, media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{version.original_filename}"'})
+
+
+@router.patch("/{dataset_id}/versions/{version_number}/type-overrides", responses=_ERRORS)
+def set_type_overrides(
+    dataset_id: str, version_number: int, body: dict,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+) -> dict:
+    """Override inferred column types. {col: type} where type in (integer, float, categorical, text, datetime, boolean)."""
+    from app.services import storage as stor
+    ALLOWED = {"integer", "float", "categorical", "text", "datetime", "boolean", "auto"}
+    overrides = {k: v for k, v in body.items() if v in ALLOWED}
+    bad = {k: v for k, v in body.items() if v not in ALLOWED}
+    version = svc.get_version(db, dataset_id, version_number)
+    version.type_overrides = {**(version.type_overrides or {}), **overrides}
+    # Invalidate Parquet cache so next read uses the new types
+    stor.invalidate_parquet_cache(settings, version)
+    version.parquet_path = None
+    db.commit()
+    return {"type_overrides": version.type_overrides, "invalid_types_ignored": bad}

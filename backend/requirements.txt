@@ -11,3 +11,7 @@ openpyxl==3.1.5
 scipy==1.17.1
 apscheduler==3.11.0
 # Added in later phases: streamlit, plotly, requests (frontend)
+
+alembic==1.20.0
+slowapi==0.1.10
+pyarrow==24.0.0

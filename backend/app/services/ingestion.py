@@ -37,6 +37,8 @@ class ParsedFile:
     encoding: str | None = None
     delimiter: str | None = None
     warnings: list[str] = field(default_factory=list)
+    sampled: bool = False
+    sample_size: int | None = None
 
 
 def detect_format(filename: str) -> str:
@@ -130,6 +132,60 @@ def _sniff_delimiter(text: str) -> str:
         return ","
 
 
+
+# Files larger than this are read in 500k-row chunks, concat, then truncated.
+# This prevents reading the whole file twice and gives a "sampled" warning at
+# the exact truncation point rather than reading max_rows+1 then discarding.
+_CHUNK_ROWS = 500_000
+
+
+def _parse_csv_chunked(text: str, *, max_rows: int, delimiter: str,
+                        raw_header: list[str], encoding: str) -> ParsedFile:
+    """Chunked CSV parser for large files. Stops reading at max_rows."""
+    warnings: list[str] = []
+    if encoding != "utf-8-sig":
+        warnings.append(f"File was not valid UTF-8; decoded as {encoding}.")
+
+    chunks: list[pd.DataFrame] = []
+    rows_read = 0
+    sampled = False
+
+    try:
+        reader = pd.read_csv(
+            io.StringIO(text), sep=delimiter, header=0,
+            low_memory=False, chunksize=_CHUNK_ROWS,
+        )
+        for chunk in reader:
+            if rows_read + len(chunk) > max_rows:
+                take = max_rows - rows_read
+                chunks.append(chunk.iloc[:take])
+                sampled = True
+                break
+            chunks.append(chunk)
+            rows_read += len(chunk)
+    except pd.errors.ParserError as exc:
+        raise IngestionError(
+            "Malformed CSV: some rows have a different number of fields than the header.",
+            code="MALFORMED_FILE",
+            details={"parser_message": str(exc)[:300]},
+        ) from exc
+
+    if not chunks:
+        raise IngestionError("The file has no rows.", code="EMPTY_FILE")
+
+    df = pd.concat(chunks, ignore_index=True)
+    if sampled:
+        warnings.append(
+            f"File contains more than {max_rows:,} rows. "
+            f"Profiling, validation and drift detection used the first {len(df):,} rows. "
+            "Results marked 'sampled: true' reflect this subset only."
+        )
+    df = _apply_header(df, [str(h) for h in raw_header], warnings)
+    return ParsedFile(
+        df=df, file_format="csv", encoding=encoding, delimiter=delimiter,
+        warnings=warnings, sampled=sampled, sample_size=len(df) if sampled else None,
+    )
+
 def _parse_csv(content: bytes, *, max_rows: int) -> ParsedFile:
     if content.startswith(_ZIP_MAGIC):
         raise IngestionError(
@@ -176,6 +232,11 @@ def _parse_csv(content: bytes, *, max_rows: int) -> ParsedFile:
             details={"header_columns": len(raw_header), "parsed_columns": df.shape[1]},
         )
 
+    # Use the chunked reader for large files (avoids reading max_rows+1 then discarding).
+    row_estimate = text.count("\n")
+    if row_estimate > _CHUNK_ROWS:
+        return _parse_csv_chunked(text, max_rows=max_rows, delimiter=delimiter,
+                                  raw_header=raw_header, encoding=encoding)
     df = _apply_header(df, [str(h) for h in raw_header], warnings)
     _check_rows(df, max_rows)
     return ParsedFile(

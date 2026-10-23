@@ -244,7 +244,7 @@ def _persist_profile(db: Session, version: DatasetVersion, profile: dict[str, An
 def list_datasets(
     db: Session, *, limit: int, offset: int, project: str | None = None, search: str | None = None
 ) -> tuple[list[Dataset], int]:
-    query = select(Dataset)
+    query = select(Dataset).where(Dataset.is_deleted.is_(False))
     if project:
         query = query.where(Dataset.project == project)
     if search:
@@ -284,16 +284,8 @@ def get_version(db: Session, dataset_id: str, version_number: int | None = None)
 
 
 def load_version_dataframe(settings: Settings, version: DatasetVersion) -> pd.DataFrame:
-    """Re-parse a stored version file into a DataFrame."""
-    content = storage.read_version_file(settings, version.storage_path)
-    filename = "stored.csv" if version.file_format == "csv" else "stored.xlsx"
-    return parse_file(
-        content,
-        filename,
-        sheet_name=version.sheet_name,
-        max_rows=max(settings.max_rows, version.row_count),
-        max_columns=max(settings.max_columns, version.column_count),
-    ).df
+    """Load from Parquet cache when available, parse + cache otherwise."""
+    return storage.load_version_dataframe_cached(settings, version)
 
 
 def dataset_summary_fields(dataset: Dataset) -> dict[str, Any]:
