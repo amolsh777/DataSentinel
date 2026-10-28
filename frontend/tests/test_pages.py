@@ -33,7 +33,8 @@ def text(at: AppTest) -> str:
 
 
 @pytest.mark.parametrize("name", ["overview.py", "datasets.py", "quality.py", "drift.py", "schema.py",
-                                  "root_cause.py", "settings.py"])
+                                  "root_cause.py", "settings.py", "command_center.py", "dashboard.py", "help.py",
+                                  "incidents.py", "run_history.py"])
 def test_every_page_renders_with_demo_data(demo_api, name):
     assert_clean(load(name))
 
@@ -106,8 +107,9 @@ def test_settings_creates_edits_and_deletes_rule(demo_api):
     assert_clean(at)
     at = load("settings.py")
     assert has_rule(at, "UI test rule")
-    # invalid JSON is reported, not crashed
+    # invalid JSON (advanced mode) is reported, not crashed
     at.selectbox(key="new_type").select("missing_values")
+    at.checkbox(key="new_adv").check().run()
     at.text_area(key="new_params_missing_values").set_value("{not json")
     at = click(at, "Create rule")
     assert not at.exception and any("valid JSON" in e.value for e in at.error)
@@ -305,3 +307,71 @@ def test_full_end_to_end_monitor_incident_rca_workflow(demo_api):
     impact = requests.get(demo_api + f"/lineage/impact/{ds_id}", params={"columns": ["revenue"]}).json()
     assert len(impact["affected_assets"]) > 0
     assert any("Revenue" in a["name"] for a in impact["affected_assets"])
+
+
+# ───────────────────────────────── v8 additions ─────────────────────────────────
+def _monitor(demo_api, version=2):
+    import requests
+    ds_id = [d["id"] for d in requests.get(demo_api + "/datasets").json()["items"] if d["name"] == "Retail Transactions"][0]
+    run = requests.post(demo_api + f"/datasets/{ds_id}/monitor",
+                        json={"current_version": version, "exclude_drift_columns": ["transaction_date"]}).json()
+    assert run["status"] == "completed"
+    return ds_id, run
+
+
+def test_guided_rule_builder_creates_a_numeric_range_rule(demo_api):
+    at = load("settings.py")
+    at.selectbox(key="new_type").select("numeric_range").run()
+    at.text_input(key="new_name").set_value("Guided quantity range")
+    at.selectbox(key="new_col").select("quantity")
+    at.checkbox(key="nf_numeric_range_use_max").check().run()
+    at = click(at, "Create rule")
+    assert_clean(at)
+    assert has_rule(load("settings.py"), "Guided quantity range")
+
+
+def test_guided_rule_builder_explains_missing_input(demo_api):
+    at = load("settings.py")
+    at.selectbox(key="new_type").select("allowed_values").run()
+    at.selectbox(key="new_col").select("quantity")
+    at = click(at, "Create rule")
+    assert not at.exception
+    assert any("at least one allowed value" in e.value for e in at.error)
+
+
+def test_command_center_shows_fleet_after_a_run(demo_api):
+    _monitor(demo_api)
+    at = load("command_center.py")
+    assert_clean(at)
+    t = text(at)
+    assert "Fleet score" in t and "Needs attention" in t and "Retail Transactions" in t
+
+
+def test_command_center_empty_state(empty_api):
+    at = load("command_center.py")
+    assert not at.exception, [e.value for e in at.exception]
+    assert "Welcome to DataSentinel" in text(at)
+
+
+def test_quality_trends_are_built_from_real_runs_only(demo_api):
+    _monitor(demo_api)
+    at = load("dashboard.py")
+    assert_clean(at)
+    t = text(at)
+    assert "Latest score" in t and "Quality score per run" in t and "Daily summary" in t
+
+
+def test_run_history_compare_tab_after_two_runs(demo_api):
+    _monitor(demo_api, 1)
+    _monitor(demo_api, 2)
+    at = load("run_history.py")
+    assert_clean(at)
+    assert "What changed" in text(at) and "Score change" in text(at)
+
+
+def test_incident_center_scope_toggle(demo_api):
+    _monitor(demo_api)
+    at = load("incidents.py")
+    at.radio(key="inc_scope").set_value("All datasets").run()
+    assert_clean(at)
+    assert "Mean time to resolve" in text(at)

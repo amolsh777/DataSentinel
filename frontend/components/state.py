@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from components import ui
+from components import insights, ui
 from services.api_client import ApiClient, ApiError
 
 DEMO_RULES = [
@@ -93,3 +93,65 @@ def analysis_body(current: int, reference: int | None, **extra) -> dict:
     """Request body for score / drift / root-cause. Reference None means 'no reference', not 'use baseline'."""
     return {"current_version": current, "reference_version": reference,
             "use_active_baseline": reference is not None, **extra}
+
+
+# ------------------------------------------------------------------ v8 helpers
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_run_detail(base_url: str, dataset_id: str, run_id: str) -> dict:
+    """Run detail is immutable once finished, so it is safe to cache (keyed by URL + ids, not by the client)."""
+    return ApiClient(base_url).get_run(dataset_id, run_id)
+
+
+def run_detail(dataset_id: str, run_id: str) -> dict:
+    return _cached_run_detail(client().base_url, dataset_id, run_id)
+
+
+def runs_with_checks(dataset_id: str, runs_newest_first: list[dict], max_runs: int = 20) -> list[tuple[dict, list[dict]]]:
+    """(run row, check_results) pairs, oldest -> newest, for completed runs. Fetches (cached) run details."""
+    done = [r for r in runs_newest_first if r.get("status") == "completed"][:max_runs]
+    out = []
+    for r in insights.runs_oldest_first(done):
+        try:
+            out.append((r, run_detail(dataset_id, r["run_id"]).get("check_results", [])))
+        except ApiError:
+            continue
+    return out
+
+
+def fleet_snapshot(datasets: list[dict], runs_per_dataset: int = 12) -> tuple[list[dict], list[dict]]:
+    """(rows, incidents): one headline row per dataset (latest run, score trend, open incidents) plus the raw
+    incident list. One incidents call for the whole fleet."""
+    c = client()
+    try:
+        incidents = c.list_incidents(limit=200)["items"]
+    except ApiError:
+        incidents = []
+    by_ds: dict[str, list[dict]] = {}
+    for i in incidents:
+        by_ds.setdefault(i.get("dataset_id"), []).append(i)
+    rows = []
+    for d in datasets:
+        try:
+            runs = c.run_history(d["id"], limit=runs_per_dataset)
+        except ApiError:
+            runs = []
+        rows.append(insights.fleet_row(d, runs, by_ds.get(d["id"], [])))
+    return rows, incidents
+
+
+def open_incident_counts() -> dict:
+    """Cheap fleet-wide counts for the sidebar alert: {'open': n, 'critical_high': n}. Never raises."""
+    c = client()
+    try:
+        total = c.list_incidents(limit=1)["total"]
+        ch = c.list_incidents(severity=["critical", "high"], limit=1)["total"]
+        return {"open": total, "critical_high": ch}
+    except ApiError:
+        return {"open": 0, "critical_high": 0}
+
+
+def open_page(page: str, dataset_name: str | None = None) -> None:
+    """Switch to a registered page, optionally selecting a dataset first (applied by app.py on the next run)."""
+    if dataset_name:
+        select_dataset_by_name(dataset_name)
+    st.switch_page(page)

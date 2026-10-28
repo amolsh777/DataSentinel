@@ -180,8 +180,24 @@ class ApiClient:
             r.raise_for_status()
             return r.content
         except Exception as exc:
-            from services.api_client import ApiError
             raise ApiError(str(exc)) from None
+
+    def download_version(self, dataset_id: str, version: int) -> bytes:
+        try:
+            r = self._session.get(f"{self.base_url}/datasets/{dataset_id}/versions/{version}/download",
+                                  timeout=self.timeout)
+            r.raise_for_status()
+            return r.content
+        except Exception as exc:
+            raise ApiError(str(exc)) from None
+
+    # ───────────────────────────── dataset lifecycle (soft delete) ─────────────
+    def delete_dataset(self, dataset_id: str) -> dict:
+        """Soft-delete (hidden from lists, recoverable with restore_dataset)."""
+        return self._request("DELETE", f"/datasets/{dataset_id}", params={"confirm": "true"})
+
+    def restore_dataset(self, dataset_id: str) -> dict:
+        return self._request("PATCH", f"/datasets/{dataset_id}/restore")
 
     # ─────────────────────────────────── lineage ─────────────────────────────
     def get_lineage(self) -> dict:

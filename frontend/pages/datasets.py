@@ -8,14 +8,30 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from components import charts, state, ui  # noqa: E402
+from components import charts, insights, state, ui  # noqa: E402
 from services.api_client import ApiError  # noqa: E402
 
 SAMPLE_DIR = pathlib.Path(__file__).resolve().parents[2] / "data" / "sample"
 c = state.client()
 datasets = state.api(c.list_datasets)
 
-ui.page_header("Datasets", "Register files, browse versions and inspect profiles.")
+ui.page_header("Datasets", "Register files, browse versions, inspect profiles — and archive what you no longer need.")
+
+undo = st.session_state.get("_deleted_ds")
+if undo:
+    u1, u2 = st.columns([5, 1])
+    u1.markdown(f'<div class="ds-callout" style="--c:#eab308">Dataset <b>{ui.esc(undo["name"])}</b> was archived. It is hidden everywhere but can be restored.</div>',
+                unsafe_allow_html=True)
+    if u2.button("Undo", key="ds_undo", type="primary"):
+        try:
+            c.restore_dataset(undo["id"])
+        except ApiError as exc:
+            ui.show_error(exc)
+        else:
+            st.session_state.pop("_deleted_ds", None)
+            state.select_dataset_by_name(undo["name"])
+            st.cache_data.clear()
+            st.rerun()
 tab_explore, tab_upload, tab_demo = st.tabs(["Explorer", "Register / upload", "Demo data"])
 
 
@@ -36,6 +52,14 @@ with tab_explore:
                    + (" · synthetic" if vmeta["is_synthetic"] else ""))
         for w in vmeta.get("ingestion_warnings", []):
             ui.callout("warn", w)
+        lp = ds.get("latest_profile") or {}
+        ui.kpi_cards([
+            {"label": "Rows (latest)", "value": ui.fmt_int(lp.get("row_count")), "sub": f"{ds.get('version_count', len(vers))} version(s)"},
+            {"label": "Profile score", "value": ui.fmt_score(lp.get("quality_score")), "sub": "intrinsic heuristic",
+             "color": insights.score_color(lp.get("quality_score"))},
+            {"label": "Owner", "value": ds.get("owner") or "–", "sub": ds.get("project") or "no project", "color": "#a78bfa"},
+            {"label": "Selected version", "value": f"v{ver}", "sub": f"{vmeta['row_count']:,} rows", "color": "#38bdf8"},
+        ])
 
         t_prev, t_schema, t_cols, t_score = st.tabs(["Preview", "Schema", "Column profiles", "Profile score"])
         with t_prev:
@@ -48,10 +72,8 @@ with tab_explore:
             dl_col1, dl_col2 = st.columns([1, 4])
             if dl_col1.button("Download original file", key="dl_file"):
                 try:
-                    content = c._session.get(f"{c.base_url}/datasets/{ds['id']}/versions/{ver}/download",
-                                              timeout=180).content
-                    dl_col2.download_button("Save file", content, vmeta["original_filename"])
-                except Exception as exc:
+                    dl_col2.download_button("Save file", c.download_version(ds["id"], ver), vmeta["original_filename"], key="dl_file_save")
+                except ApiError as exc:
                     ui.show_error(exc)
         with t_schema:
             sch = state.api(c.schema, ds["id"], ver)
@@ -117,6 +139,22 @@ with tab_explore:
             ui.show_df(pd.DataFrame([{"component": k, "weight": v["weight"], "ratio": v["ratio"], "points": v["points"]}
                                      for k, v in comp.items()]))
             st.caption(m["quality_breakdown"]["note"] + " For a rules-driven score use the Data Quality page.")
+
+
+        with st.expander("Danger zone · archive this dataset"):
+            st.caption("Archiving hides the dataset, its runs and incidents from every list. Nothing is deleted from disk and you can undo it "
+                       "right after.")
+            sure = st.checkbox(f"I understand — archive “{ds['name']}”", key="ds_arch_ok")
+            if st.button("Archive dataset", key="ds_arch", disabled=not sure):
+                try:
+                    c.delete_dataset(ds["id"])
+                except ApiError as exc:
+                    ui.show_error(exc)
+                else:
+                    st.session_state["_deleted_ds"] = {"id": ds["id"], "name": ds["name"]}
+                    st.session_state.pop("dataset_id", None)
+                    st.session_state.pop("_fleet_snap", None)
+                    st.rerun()
 
 
 # ------------------------------------------------------------------ upload

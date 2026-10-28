@@ -131,7 +131,8 @@ with tab_score:
             ui.callout("info", f"{un['dimension'].title()} not evaluated — {un['reason']}")
         st.markdown("**Dimension breakdown**")
         for name, d in score["dimensions"].items():
-            head = (f"{name.title()} — {'not evaluated' if d['score'] is None else f'{d['score']:.1f}'} "
+            score_txt = "not evaluated" if d["score"] is None else f"{d['score']:.1f}"
+            head = (f"{name.title()} — {score_txt} "
                     f"(weight {d['weight']:.0f})")
             with st.expander(head):
                 st.markdown(ui.status_badge(d["status"]), unsafe_allow_html=True)

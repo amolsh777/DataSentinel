@@ -1,4 +1,7 @@
-# DataSentinel
+# DataSentinel  ·  v9
+
+> **New in v9:** staleness alerts, saved preferences, column hotspots, fleet report (docs/CHANGELOG_v9.md). **v8:** redesigned UI, fleet-wide **Command Center**, real-data **Quality Trends**, bulk incident triage, run-vs-run comparison,
+> guided rule builder with import/export. See [docs/CHANGELOG_v8.md](docs/CHANGELOG_v8.md).
 
 **AI-assisted data quality, drift detection and pipeline intelligence platform.**
 

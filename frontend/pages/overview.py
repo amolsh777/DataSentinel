@@ -11,7 +11,7 @@ c = state.client()
 health = state.api(c.health)
 datasets = state.api(c.list_datasets)
 
-ui.page_header("Overview", "Is my data healthy, what changed, and what should I investigate first?")
+ui.page_header("Assessment", "Is my data healthy, what changed, and what should I investigate first? Compare any two versions in one click.")
 
 # ── platform status ───────────────────────────────────────────────────────────
 if not datasets:
@@ -49,7 +49,7 @@ ui.kpi_cards([
     {"label": "API", "value": health["status"].upper(),
      "sub": f"v{health['version']} · database {health['database']}", "color": "#22c55e"},
 ])
-st.dataframe(pd.DataFrame(rows), hide_index=True, column_config={
+ui.show_df(pd.DataFrame(rows), column_config={
     "Profile score": st.column_config.ProgressColumn(
         "Profile score", min_value=0, max_value=100, format="%.1f")})
 
@@ -131,8 +131,9 @@ else:
     if not same_ds:
         ui.callout("info",
             f"Cross-dataset comparison: **{cur_ds_name}** v{cur_ver} will be validated against "
-            f"**{ref_ds_name}** v{ref_ver}. Schema diff and drift use the reference dataset's "
-            "column profiles as the baseline.")
+            f"**{ref_ds_name}** v{ref_ver}. Heads-up: the backend compares versions *within* one dataset, so drift and "
+            f"root cause for this run use **{cur_ds_name}**'s own active baseline — not {ref_ds_name} v{ref_ver}. "
+            "Quality scoring uses the current dataset's rules.")
     run_disabled = False
 
 key = (cur_ds["id"], cur_ver, ref_ds["id"], ref_ver)
@@ -246,3 +247,17 @@ with right:
                 f'{ui.esc(top["cause"])}</div></div>',
                 unsafe_allow_html=True)
         st.caption("Open **Root Cause Analysis** in the sidebar for full evidence and corrective actions.")
+
+# ── export ────────────────────────────────────────────────────────────────────
+lines = [f"# DataSentinel assessment — {result['cur_ds_name']} v{result['cur_ver']}"
+         + (f" vs v{result['ref_ver']}" if result["ref_ver"] else ""), "",
+         f"- Quality score: {ui.fmt_score(score['score'])} ({score['status']})",
+         f"- Drifted features: {'n/a' if drift is None else drift['summary']['features_drifted']}",
+         f"- Breaking schema changes: {'n/a' if not schema else schema['breaking_changes']}",
+         f"- Root-cause findings: {rca['summary']['total_findings']} ({sev['critical']} critical, {sev['high']} high)", "", "## Findings", ""]
+for f in rca["findings"]:
+    top = f["hypotheses"][0]
+    lines.append(f"- **[{f['severity'].upper()}] {f['issue_name']}** ({f['issue_type']}) — possible cause ({top['likelihood']}): {top['cause']}")
+if not rca["findings"]:
+    lines.append("No issues detected.")
+st.download_button("Download assessment summary (Markdown)", "\n".join(lines), "assessment_summary.md", "text/markdown", key="ov_dl_md")

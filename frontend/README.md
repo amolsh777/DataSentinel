@@ -2,8 +2,7 @@
 
 A dark-first dashboard that talks to the backend **only over REST** (`DS_API_URL`, default
 `http://127.0.0.1:8000/api`). Every button, filter and form on every page is wired to a working
-backend call; there are no placeholder controls. Pages for features that do not exist yet
-(incidents, lineage, run history, reports) are intentionally absent until their backend phases land.
+backend call; there are no placeholder controls. 
 
 ## Run it (Windows PowerShell, from the repository root)
 
@@ -30,7 +29,12 @@ modified v2 file.
 
 | Page | What you can do |
 |------|-----------------|
-| **Overview** | Dataset table with profile scores and baselines; one-click assessment (score + drift + root cause) with a prioritised list of what to investigate first |
+| **Command Center** | Fleet health across all datasets: score, ranked attention list, dataset tiles, run monitoring everywhere, CSV export |
+| **Quality Trends** | Score vs. SLA target, failures/drift per run, rule-type heatmap, persistent failing rules, incident timeline (real runs only) |
+| **Run History** | Timeline, run inspector, compare two runs, launch runs with live job status, report downloads |
+| **Incident Center** | Filter, sort, bulk triage, evidence, impact, history |
+| **Guide** | Quick start, how numbers are produced, glossary |
+| **Assessment** (formerly Overview) | Dataset table with profile scores and baselines; one-click assessment (score + drift + root cause) with a prioritised list of what to investigate first |
 | **Datasets** | Browse versions: preview, schema, per-column profiles and charts, profile-score breakdown. Upload CSV/Excel (sheet selection, preview, inferred types) as a new dataset or a new version. Demo-data loader |
 | **Data Quality** | Run the validation rules (filter by outcome, severity, text; inspect expected/observed/evidence; export JSON/CSV). Configurable quality score: weights and minimums per dimension, gauge, radar, per-rule breakdown, version comparison and score history |
 | **Drift Monitoring** | Pick current and reference versions (baseline by default), tune every threshold, exclude columns, see effect sizes across features, per-feature distribution charts, method tables (verdict-deciding vs context-only), new categories, missingness changes |
