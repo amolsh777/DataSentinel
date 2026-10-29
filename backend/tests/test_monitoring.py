@@ -400,7 +400,8 @@ def test_test_alert_webhook_delivers_payload():
         status_code = 200
         def raise_for_status(self): pass
 
-    with patch("app.services.alert_service.requests.post",
+    with patch("app.services.alert_service.validate_webhook_url", side_effect=lambda u, **k: u), \
+         patch("app.services.alert_service.requests.post",
                side_effect=lambda url, json=None, **kw: (captured.append(json) or FakeResp())) as mock_post:
         result = send_test_alert("https://hooks.example.com/webhook")
     assert result["ok"] is True
@@ -415,7 +416,8 @@ def test_send_webhook_slack_format():
         def raise_for_status(self): pass
 
     captured = []
-    with patch("app.services.alert_service.requests.post",
+    with patch("app.services.alert_service.validate_webhook_url", side_effect=lambda u, **k: u), \
+         patch("app.services.alert_service.requests.post",
                side_effect=lambda url, json=None, **kw: (captured.append(json) or FakeResp())):
         result = send_webhook(
             "https://hooks.slack.com/services/FAKE",
@@ -431,10 +433,10 @@ def test_alert_api_endpoint(client):
     from httpx import Request as HxReq
     r = client.post("/api/datasets/any/alerts/test",
                     json={"webhook_url": "http://localhost:0/nope"})
-    # Connection refused → ok=False, not a 5xx
+    # Internal address -> blocked by the SSRF guard (ok=False with a clear message), not a 5xx
     assert r.status_code == 200
     assert r.json()["ok"] is False
-    assert r.json()["error"] is not None
+    assert "private or internal" in r.json()["error"]
 
 
 def test_alert_endpoint_requires_webhook_url(client):

@@ -17,7 +17,7 @@ DEMO_RULES = [
 
 
 def client() -> ApiClient:
-    return ApiClient(st.session_state.get("api_url") or None)
+    return ApiClient(st.session_state.get("api_url") or None, api_key=st.session_state.get("api_key") or None)
 
 
 def api(fn, *args, **kwargs):
@@ -97,13 +97,13 @@ def analysis_body(current: int, reference: int | None, **extra) -> dict:
 
 # ------------------------------------------------------------------ v8 helpers
 @st.cache_data(ttl=300, show_spinner=False)
-def _cached_run_detail(base_url: str, dataset_id: str, run_id: str) -> dict:
+def _cached_run_detail(base_url: str, dataset_id: str, run_id: str, api_key: str = "") -> dict:
     """Run detail is immutable once finished, so it is safe to cache (keyed by URL + ids, not by the client)."""
-    return ApiClient(base_url).get_run(dataset_id, run_id)
+    return ApiClient(base_url, api_key=api_key or None).get_run(dataset_id, run_id)
 
 
 def run_detail(dataset_id: str, run_id: str) -> dict:
-    return _cached_run_detail(client().base_url, dataset_id, run_id)
+    return _cached_run_detail(client().base_url, dataset_id, run_id, st.session_state.get("api_key") or "")
 
 
 def runs_with_checks(dataset_id: str, runs_newest_first: list[dict], max_runs: int = 20) -> list[tuple[dict, list[dict]]]:

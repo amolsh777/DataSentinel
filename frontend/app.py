@@ -63,6 +63,7 @@ with st.sidebar:
 
     with st.expander("Connection"):
         st.text_input("API URL", value=c.base_url, key="api_url")
+        st.text_input("API key", type="password", key="api_key", help="Only needed when the backend sets DS_API_KEY. Kept in this browser session only.")
         st.markdown(ui.status_badge("healthy" if online else "failing"), unsafe_allow_html=True)
         if st.button("Refresh data", key="side_refresh", use_container_width=True, help="Clear cached run details and reload everything."):
             st.cache_data.clear()

@@ -20,12 +20,15 @@ class ApiError(Exception):
 
 
 class ApiClient:
-    def __init__(self, base_url: str | None = None, timeout: float = 180.0) -> None:
+    def __init__(self, base_url: str | None = None, timeout: float = 180.0, api_key: str | None = None) -> None:
         self.base_url = (base_url or os.environ.get("DS_API_URL") or DEFAULT_API_URL).rstrip("/")
         if not self.base_url.endswith("/api"):
             self.base_url += "/api"
         self.timeout = timeout
         self._session = requests.Session()
+        key = api_key or os.environ.get("DS_API_KEY")
+        if key:  # sent on every request, including downloads and metrics
+            self._session.headers["X-API-Key"] = key
 
     # ------------------------------------------------------------------ core
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:

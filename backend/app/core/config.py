@@ -49,40 +49,49 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str | None = None
 
-    # Rate limiting
+    # Rate limiting (enforced by app.core.security.RateLimitMiddleware; per process)
     rate_limit_upload: str = "10/minute"
     rate_limit_analysis: str = "30/minute"
+    trust_proxy_headers: bool = False  # honour X-Forwarded-For only behind a proxy you control
 
-    # Production guard: refuse start with weak settings in production mode
+    # Authentication. Unset = open API (fine for local development; refused in production).
+    api_key: str | None = None
+    readonly_api_key: str | None = None
+
+    # Outbound webhooks may not target private/internal addresses unless explicitly allowed.
+    allow_private_webhooks: bool = False
+
+    # Jobs that have been "running" longer than this at startup are marked failed (interrupted).
+    job_stale_minutes: int = 60
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
-    def check_production_safety(self) -> list[str]:
-        """Return a list of config problems that are unsafe for production.
 
-        Called at startup; raises SystemExit when in production mode with problems.
-        """
+    def check_production_safety(self) -> list[str]:
+        """Blocking problems: the process refuses to start in production while any remain."""
         issues: list[str] = []
         if not self.is_production:
-            return issues  # only enforce in production
+            return issues
+        if not self.api_key:
+            issues.append("DS_API_KEY is not set - the API would be completely unauthenticated. "
+                          "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+        elif len(self.api_key) < 16:
+            issues.append("DS_API_KEY is shorter than 16 characters.")
         if "localhost" in self.cors_origins or "127.0.0.1" in self.cors_origins:
-            issues.append(
-                "DS_CORS_ORIGINS contains localhost — "
-                "set it to your actual frontend domain in production."
-            )
-        if self.is_sqlite:
-            issues.append(
-                "DS_DATABASE_URL is SQLite — "
-                "use PostgreSQL in production for concurrent write safety."
-            )
-        if self.smtp_host is None:
-            issues.append(
-                "DS_SMTP_HOST is not set — "
-                "email alerts will not work in production."
-            )
+            issues.append("DS_CORS_ORIGINS contains localhost - set it to your actual frontend origin in production.")
+        if self.allow_private_webhooks:
+            issues.append("DS_ALLOW_PRIVATE_WEBHOOKS=true allows webhooks to internal addresses (SSRF risk).")
         return issues
 
-
+    def production_warnings(self) -> list[str]:
+        """Non-blocking advice, logged at startup."""
+        out: list[str] = []
+        if self.is_production and self.is_sqlite:
+            out.append("SQLite in production: fine for a single process, use PostgreSQL for concurrent writers.")
+        if self.is_production and self.smtp_host is None:
+            out.append("DS_SMTP_HOST is not set - email alerts are unavailable (webhooks still work).")
+        return out
 
     @field_validator("database_url")
     @classmethod

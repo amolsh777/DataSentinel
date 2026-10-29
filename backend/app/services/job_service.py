@@ -6,7 +6,8 @@ The client polls ``GET /api/v1/jobs/{job_id}`` until ``status`` is ``completed``
 or ``failed``.
 
 The worker runs in FastAPI's BackgroundTasks thread pool — no external queue
-needed for a hackathon. For production, replace ``_run_in_thread`` with Celery.
+needed. Jobs live in the database, so history survives restarts; running work does not, which is why
+``recover_interrupted`` marks stale jobs as failed at startup. For many concurrent heavy jobs use a real queue.
 """
 
 from __future__ import annotations
@@ -38,6 +39,44 @@ def create_job(db: Session, dataset_id: str, job_type: str,
     )
     db.add(job); db.commit(); db.refresh(job)
     return job
+
+
+def find_active_duplicate(db: Session, dataset_id: str, job_type: str, request_body: dict[str, Any]) -> AnalysisJob | None:
+    """An identical job that is still queued/running (so a repeated click/request does not start duplicate work)."""
+    q = (select(AnalysisJob)
+         .where(AnalysisJob.dataset_id == dataset_id, AnalysisJob.job_type == job_type,
+                AnalysisJob.status.in_(("queued", "running")))
+         .order_by(AnalysisJob.queued_at.desc()).limit(20))
+    wanted = deep_to_py(request_body or {})
+    for job in db.scalars(q):
+        if deep_to_py(job.request_body or {}) == wanted:
+            return job
+    return None
+
+
+def recover_interrupted(session_factory, stale_minutes: int = 60) -> int:
+    """Mark jobs that were queued/running longer than ``stale_minutes`` ago as failed.
+
+    BackgroundTasks die with the process, so after a crash/restart such rows would stay "running" forever.
+    Returns the number of jobs recovered. Never raises (startup must not fail because of this).
+    """
+    try:
+        cutoff = utcnow() - datetime.timedelta(minutes=stale_minutes)
+        with session_factory() as db:
+            stale = list(db.scalars(select(AnalysisJob).where(
+                AnalysisJob.status.in_(("queued", "running")), AnalysisJob.queued_at < cutoff)))
+            for job in stale:
+                job.status = "failed"
+                job.finished_at = utcnow()
+                job.error_message = (f"Interrupted: no result after {stale_minutes} min "
+                                     "(the server probably restarted). Submit the job again.")
+            db.commit()
+            if stale:
+                logger.warning("Recovered %d interrupted job(s).", len(stale))
+            return len(stale)
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("Job recovery failed")
+        return 0
 
 
 def get_job(db: Session, job_id: str) -> AnalysisJob:
@@ -126,4 +165,4 @@ def run_job_background(
                 db.commit()
 
 
-__all__ = ["create_job", "get_job", "list_jobs", "job_to_dict", "run_job_background"]
+__all__ = ["find_active_duplicate", "recover_interrupted", "create_job", "get_job", "list_jobs", "job_to_dict", "run_job_background"]

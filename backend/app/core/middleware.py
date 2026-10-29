@@ -2,16 +2,16 @@
 
 Every inbound HTTP request gets a ``X-Request-ID`` header (generated if absent).
 Timing and structured context are written to the application logger as JSON
-(or text in development) via a thread-local log record factory so every log
+(or text in development) via a context-variable log record factory so every log
 line emitted during request processing automatically carries the request-id.
 """
 
 from __future__ import annotations
 
 import logging
-import threading
 import time
 import uuid
+from contextvars import ContextVar
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -19,9 +19,9 @@ from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
-# Thread-local storage so the log record factory can read the current request_id
-# without being passed it explicitly.
-_ctx: threading.local = threading.local()
+# Context variable (not thread-local): the request id follows the request across awaits and into the
+# threadpool that runs sync endpoints, and concurrent requests on one event-loop thread cannot overwrite each other.
+request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 
 def _make_record_factory(original):
@@ -30,7 +30,7 @@ def _make_record_factory(original):
         record = original(name, level, fn, lno, msg, args, exc_info, func, sinfo)
         # Apply thread-local request_id if not already set by explicit extra=.
         if not hasattr(record, "request_id"):
-            record.request_id = getattr(_ctx, "request_id", "-")
+            record.request_id = request_id_var.get()
         return record
     return factory
 
@@ -46,7 +46,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
         # Make the request-id available to all log calls on this thread.
-        _ctx.request_id = request_id
+        token = request_id_var.set(request_id)
         t0 = time.perf_counter()
         response: Response | None = None
         try:
@@ -68,8 +68,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                     "duration_ms": duration_ms,
                 },
             )
-            # Clear thread-local so it doesn't leak into unrelated tasks.
-            _ctx.request_id = "-"
+            request_id_var.reset(token)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Response-Time-Ms"] = str(duration_ms)
         return response

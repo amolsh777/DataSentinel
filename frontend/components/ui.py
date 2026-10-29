@@ -321,6 +321,12 @@ def show_error(err: Any) -> None:
     if code == "API_UNREACHABLE":
         st.error(f"{err}")
         st.code("cd backend\nuvicorn app.asgi:app --port 8000", language="powershell")
+    elif code == "UNAUTHORIZED":
+        st.error(f"{err}  \nEnter the key in the sidebar under **Connection → API key**, or set `DS_API_KEY` for the frontend.")
+    elif code == "FORBIDDEN":
+        st.error(f"{err}  \nThis key is read-only; use a full-access key to make changes.")
+    elif code == "RATE_LIMITED":
+        st.warning(f"{err}")
     else:
         st.error(f"{err}  \n`{code}`")
 

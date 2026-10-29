@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -33,40 +33,12 @@ _START_TIME = time.time()
 # ─────────────────────────────── job submit ───────────────────────────────────
 
 
-def _submit(
-    db: Session,
-    settings: Settings,
-    background_tasks: BackgroundTasks,
-    dataset_id: str,
-    job_type: str,
-    body: dict[str, Any],
-    fn,
-    **fn_kwargs,
-) -> dict[str, Any]:
-    ds.get_dataset(db, dataset_id)
-    job = job_service.create_job(db, dataset_id, job_type, body)
-    background_tasks.add_task(
-        job_service.run_job_background,
-        session_factory=db.get_bind().engine.pool._creator.__self__
-        if hasattr(db.get_bind(), "engine") else _get_factory(settings),
-        settings=settings,
-        job_id=job.id,
-        fn=fn,
-        **fn_kwargs,
-    )
-    return {"job_id": job.id, "status": "queued", "poll_url": f"/api/v1/jobs/{job.id}"}
-
-
-def _get_factory(settings: Settings):
-    from app.database.session import build_engine, build_session_factory
-    return build_session_factory(build_engine(settings.database_url))
-
-
 @router.post("/datasets/{dataset_id}/jobs/monitor", tags=["jobs & metrics"])
 def submit_monitor(
     dataset_id: str,
-    body: dict[str, Any] = {},
-    background_tasks: BackgroundTasks = None,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: dict[str, Any] | None = None,
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ) -> dict[str, Any]:
@@ -75,7 +47,12 @@ def submit_monitor(
         run = monitoring_service.run_monitor(db, settings, **kw)
         return monitoring_service.run_to_dict(run)
 
-    factory = _get_factory(settings)
+    body = body or {}
+    ds.get_dataset(db, dataset_id)  # 404 instead of a foreign-key error for unknown datasets
+    existing = job_service.find_active_duplicate(db, dataset_id, "monitor", body)
+    if existing:
+        return {"job_id": existing.id, "status": existing.status, "duplicate": True, "poll_url": f"/api/v1/jobs/{existing.id}"}
+    factory = request.app.state.session_factory  # shared engine/pool, not a new engine per request
     job = job_service.create_job(db, dataset_id, "monitor", body)
     background_tasks.add_task(
         job_service.run_job_background,
@@ -95,8 +72,9 @@ def submit_monitor(
 @router.post("/datasets/{dataset_id}/jobs/drift", tags=["jobs & metrics"])
 def submit_drift(
     dataset_id: str,
-    body: dict[str, Any] = {},
-    background_tasks: BackgroundTasks = None,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: dict[str, Any] | None = None,
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ) -> dict[str, Any]:
@@ -105,7 +83,12 @@ def submit_drift(
     def _run(db, settings, **kw):
         return analysis_service.run_drift(db, settings, **kw)
 
-    factory = _get_factory(settings)
+    body = body or {}
+    ds.get_dataset(db, dataset_id)
+    existing = job_service.find_active_duplicate(db, dataset_id, "drift", body)
+    if existing:
+        return {"job_id": existing.id, "status": existing.status, "duplicate": True, "poll_url": f"/api/v1/jobs/{existing.id}"}
+    factory = request.app.state.session_factory
     job = job_service.create_job(db, dataset_id, "drift", body)
     background_tasks.add_task(
         job_service.run_job_background,

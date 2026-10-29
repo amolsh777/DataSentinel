@@ -30,6 +30,9 @@ services:
       DS_MAX_UPLOAD_MB: "${DS_MAX_UPLOAD_MB:-50}"
       DS_MAX_ROWS: "${DS_MAX_ROWS:-1000000}"
       DS_CORS_ORIGINS: "http://localhost:8501,http://127.0.0.1:8501,http://frontend:8501"
+      # Set DS_API_KEY in .env to require an API key (mandatory when DS_APP_ENV=production).
+      DS_API_KEY: "${DS_API_KEY:-}"
+      DS_READONLY_API_KEY: "${DS_READONLY_API_KEY:-}"
     volumes:
       - app_data:/app/data
     healthcheck:
@@ -51,6 +54,7 @@ services:
       - "8501:8501"
     environment:
       DS_API_URL: "http://backend:8000/api"
+      DS_API_KEY: "${DS_API_KEY:-}"
     depends_on:
       backend:
         condition: service_healthy

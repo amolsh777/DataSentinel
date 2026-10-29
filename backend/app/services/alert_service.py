@@ -20,10 +20,23 @@ from typing import Any
 import requests
 
 from app.core.config import Settings
+from app.core.security import validate_webhook_url
 
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 10
+_policy = {"allow_private": False}
+
+
+def configure(settings: Settings) -> None:
+    """Apply the webhook policy from settings (called once by create_app)."""
+    _policy["allow_private"] = bool(getattr(settings, "allow_private_webhooks", False))
+
+
+def _post(url: str, payload: dict[str, Any]) -> requests.Response:
+    """POST after the SSRF check; redirects are not followed (a redirect could point at an internal address)."""
+    validate_webhook_url(url, allow_private=_policy["allow_private"])
+    return requests.post(url, json=payload, timeout=_TIMEOUT, allow_redirects=False)
 
 
 # ──────────────────────────────────── payload builders ──────────────────────
@@ -92,14 +105,18 @@ def send_webhook(
     builders = {"slack": _slack_payload, "teams": _teams_payload, "generic": _generic_payload}
     payload = builders[fmt](run_summary, dataset_name, run_id, dashboard_url)
     try:
-        resp = requests.post(url, json=payload, timeout=_TIMEOUT)
+        resp = _post(url, payload)
         resp.raise_for_status()
         logger.info("Alert webhook %s delivered (HTTP %s)", fmt, resp.status_code)
         return {"ok": True, "status_code": resp.status_code, "error": None}
+    except ValueError as exc:  # blocked by the SSRF policy
+        logger.warning("Alert webhook blocked: %s", exc)
+        return {"ok": False, "status_code": None, "error": str(exc)}
     except requests.RequestException as exc:
-        msg = str(exc)
+        # Do not log the URL: Slack/Teams webhook URLs are secrets.
+        msg = type(exc).__name__
         logger.warning("Alert webhook failed: %s", msg)
-        return {"ok": False, "status_code": None, "error": msg}
+        return {"ok": False, "status_code": None, "error": f"Delivery failed ({msg})."}
 
 
 def send_email_alert(
@@ -154,10 +171,12 @@ def send_test_alert(url: str) -> dict[str, Any]:
     payload["event"] = "test_alert"
     payload["message"] = "This is a test alert from DataSentinel."
     try:
-        resp = requests.post(url, json=payload, timeout=_TIMEOUT)
+        resp = _post(url, payload)
         return {"ok": resp.status_code < 400, "status_code": resp.status_code, "error": None}
-    except requests.RequestException as exc:
+    except ValueError as exc:
         return {"ok": False, "status_code": None, "error": str(exc)}
+    except requests.RequestException as exc:
+        return {"ok": False, "status_code": None, "error": f"Delivery failed ({type(exc).__name__})."}
 
 
-__all__ = ["send_webhook", "send_email_alert", "send_test_alert"]
+__all__ = ["configure", "send_webhook", "send_email_alert", "send_test_alert"]

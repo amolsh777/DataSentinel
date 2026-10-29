@@ -137,26 +137,40 @@ def test_sampled_notice_in_upload_warnings(client, small_df):
 
 def test_production_guard_blocks_localhost_cors():
     from app.core.config import Settings
-    s = Settings(app_env="production", cors_origins="http://localhost:8501",
+    s = Settings(app_env="production", cors_origins="http://localhost:8501", api_key="x" * 32,
                  database_url="postgresql://fake", smtp_host="smtp.example.com")
     problems = s.check_production_safety()
     assert any("localhost" in p for p in problems)
 
 
-def test_production_guard_blocks_sqlite():
+def test_production_guard_blocks_missing_or_weak_api_key():
     from app.core.config import Settings
-    s = Settings(app_env="production", cors_origins="https://app.example.com",
-                 database_url="sqlite:///data/ds.db", smtp_host="smtp.example.com")
-    problems = s.check_production_safety()
-    assert any("SQLite" in p for p in problems)
+    base = dict(app_env="production", cors_origins="https://app.example.com", database_url="postgresql://u:p@db/x")
+    assert any("DS_API_KEY" in p for p in Settings(**base).check_production_safety())
+    assert any("shorter" in p for p in Settings(api_key="short", **base).check_production_safety())
+
+
+def test_production_guard_blocks_private_webhooks():
+    from app.core.config import Settings
+    s = Settings(app_env="production", cors_origins="https://app.example.com", database_url="postgresql://u:p@db/x",
+                 api_key="x" * 32, allow_private_webhooks=True)
+    assert any("PRIVATE_WEBHOOKS" in p for p in s.check_production_safety())
+
+
+def test_sqlite_and_missing_smtp_are_warnings_not_blockers():
+    from app.core.config import Settings
+    s = Settings(app_env="production", cors_origins="https://app.example.com", api_key="x" * 32,
+                 database_url="sqlite:///data/ds.db")
+    assert s.check_production_safety() == []
+    warnings = " ".join(s.production_warnings())
+    assert "SQLite" in warnings and "SMTP" in warnings
 
 
 def test_production_guard_passes_when_properly_configured():
     from app.core.config import Settings
-    s = Settings(app_env="production", cors_origins="https://app.example.com",
-                 database_url="postgresql://user:pass@db:5432/datasentinel",
-                 smtp_host="smtp.example.com")
-    assert s.check_production_safety() == []
+    s = Settings(app_env="production", cors_origins="https://app.example.com", api_key="x" * 32,
+                 database_url="postgresql://user:pass@db:5432/datasentinel", smtp_host="smtp.example.com")
+    assert s.check_production_safety() == [] and s.production_warnings() == []
 
 
 def test_development_guard_has_no_problems():

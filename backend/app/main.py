@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api import analysis, datasets, files, health, jobs, monitoring, quality
 from app.core.middleware import RequestContextMiddleware
+from app.core.security import ApiKeyAuthMiddleware, RateLimitMiddleware
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.services import alert_service, job_service
 from app.database.session import build_engine, build_session_factory, init_db
 
 
@@ -28,12 +32,16 @@ def create_app(settings: Settings | None = None, lifespan=None) -> FastAPI:
     if problems:
         import sys
         for problem in problems:
-            import logging
             logging.getLogger(__name__).critical("PRODUCTION CONFIG PROBLEM: %s", problem)
         sys.exit(
             "DataSentinel refuses to start in production with unsafe configuration.\n"
             + "\n".join(f"  • {p}" for p in problems)
         )
+
+    for warning in settings.production_warnings():
+        logging.getLogger(__name__).warning("Config: %s", warning)
+    if not settings.api_key and not settings.readonly_api_key:
+        logging.getLogger(__name__).warning("Config: DS_API_KEY is not set - the API is open (development mode).")
 
     app = FastAPI(
         lifespan=lifespan,
@@ -42,9 +50,16 @@ def create_app(settings: Settings | None = None, lifespan=None) -> FastAPI:
         description="Data quality, drift detection and pipeline intelligence.",
     )
     app.state.settings = settings
+    alert_service.configure(settings)
+    job_service.recover_interrupted(build_session_factory(engine), settings.job_stale_minutes)
     app.state.engine = engine
     app.state.session_factory = build_session_factory(engine)
 
+    # Order matters (last added = outermost): rate limit -> auth -> CORS -> request context.
+    # CORS must wrap auth so pre-flight and 401/429 responses carry CORS headers.
+    app.add_middleware(RateLimitMiddleware, upload=settings.rate_limit_upload, analysis=settings.rate_limit_analysis,
+                       trust_proxy=settings.trust_proxy_headers)
+    app.add_middleware(ApiKeyAuthMiddleware, api_key=settings.api_key, readonly_key=settings.readonly_api_key)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -53,17 +68,6 @@ def create_app(settings: Settings | None = None, lifespan=None) -> FastAPI:
         allow_headers=["*"],
     )
     register_error_handlers(app)
-
-    # Rate limiting (10 uploads/min per IP; analysis 30/min).
-    try:
-        from slowapi import Limiter, _rate_limit_exceeded_handler
-        from slowapi.util import get_remote_address
-        from slowapi.errors import RateLimitExceeded
-        limiter = Limiter(key_func=get_remote_address)
-        app.state.limiter = limiter
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    except ImportError:
-        pass  # slowapi optional
 
     app.add_middleware(RequestContextMiddleware)
 

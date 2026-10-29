@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_settings_dep, read_upload
@@ -219,13 +220,12 @@ def download_version_file(
     settings: Settings = Depends(get_settings_dep),
 ) -> Response:
     """Download the original uploaded file for a dataset version."""
-    from fastapi.responses import Response as FastAPIResponse
-    dataset = svc.get_dataset(db, dataset_id)
+    svc.get_dataset(db, dataset_id)  # 404 if the dataset does not exist
     version = svc.get_version(db, dataset_id, version_number)
     from app.services import storage
     content = storage.read_version_file(settings, version.storage_path)
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if version.file_format == "excel" else "text/csv"
-    return FastAPIResponse(content=content, media_type=media_type,
+    return Response(content=content, media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{version.original_filename}"'})
 
 
