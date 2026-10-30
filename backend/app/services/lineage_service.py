@@ -262,12 +262,12 @@ def get_affected_assets(db: Session, dataset_id: str, columns: list[str]) -> lis
 # ──────────────────────────────────── demo seed ─────────────────────────────
 
 
-def seed_demo_lineage(db: Session, dataset_ids: dict[str, str]) -> None:
-    """Load `data/sample/lineage_demo.json` into the DB. Idempotent."""
+def seed_demo_lineage(db: Session, dataset_ids: dict[str, str], filename: str = "lineage_demo.json") -> None:
+    """Load `data/sample/<filename>` (default lineage_demo.json) into the DB. Idempotent."""
     sample_dir = Path(__file__).resolve().parents[3] / "data" / "sample"
-    demo_file = sample_dir / "lineage_demo.json"
+    demo_file = sample_dir / filename
     if not demo_file.exists():
-        logger.warning("lineage_demo.json not found at %s; skipping lineage seed.", demo_file)
+        logger.warning("%s not found; skipping lineage seed.", demo_file)
         return
     data = json.loads(demo_file.read_text())
     name_to_id: dict[str, str] = {}

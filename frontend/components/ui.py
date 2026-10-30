@@ -12,6 +12,8 @@ from typing import Any, Sequence
 
 import streamlit as st
 
+from components import prefs, theme
+
 SEVERITY_COLORS = {"critical": "#ef4444", "high": "#f97316", "medium": "#eab308", "low": "#38bdf8", "info": "#94a3b8"}
 OUTCOME_COLORS = {"fail": "#ef4444", "warn": "#eab308", "pass": "#22c55e", "skipped": "#64748b", "info": "#94a3b8"}
 STATUS_COLORS = {
@@ -27,18 +29,16 @@ VIOLET = "#a78bfa"
 
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root {
-  --ds-bg:#0b1220; --ds-surface:#111a2e; --ds-surface-2:#0f1729; --ds-border:#1e293b; --ds-border-hi:#2b3a55;
-  --ds-text:#e2e8f0; --ds-strong:#f8fafc; --ds-muted:#94a3b8; --ds-faint:#64748b; --ds-accent:#2dd4bf; --ds-violet:#a78bfa;
-  --ds-radius:14px; --ds-shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
-}
-html, body, [class*="st-"], .stMarkdown { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+/*__VARS__*/
+html, body, .stApp, .stMarkdown, button, input, textarea, select {font-family:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;}
+/* icons are ligature fonts: they must keep their own family or the icon *names* show up as text over the labels */
+[data-testid="stIconMaterial"], [class*="material-symbols"], .material-icons {font-family:'Material Symbols Rounded','Material Symbols Outlined' !important;
+  font-feature-settings:'liga'; letter-spacing:normal; text-transform:none;}
 .block-container {padding-top: 2rem; padding-bottom: 4rem; max-width: 1320px;}
 h1, h2, h3 {letter-spacing: -0.015em;}
 [data-testid="stAppViewContainer"] {background:
-  radial-gradient(1100px 420px at 85% -120px, rgba(45,212,191,.07), transparent 60%),
-  radial-gradient(900px 380px at -10% -80px, rgba(167,139,250,.06), transparent 55%), var(--ds-bg);}
-[data-testid="stSidebar"] {border-right: 1px solid var(--ds-border); background:linear-gradient(180deg,#0e1628 0%,#0b1220 100%);}
+  radial-gradient(1100px 420px at 85% -120px, var(--ds-glow-a), transparent 60%),
+  radial-gradient(900px 380px at -10% -80px, var(--ds-glow-b), transparent 55%), var(--ds-bg);}
 [data-testid="stSidebarNav"] a, [data-testid="stSidebar"] a[data-testid="stSidebarNavLink"] {border-radius:10px;}
 [data-testid="stHeader"] {background:transparent;}
 
@@ -54,7 +54,7 @@ h1, h2, h3 {letter-spacing: -0.015em;}
 
 /* hero */
 .ds-hero {position:relative; overflow:hidden; margin:0 0 1.2rem 0; padding:1.25rem 1.5rem; border-radius:18px; border:1px solid var(--ds-border);
-  background:linear-gradient(135deg, rgba(45,212,191,.10) 0%, rgba(17,26,46,.9) 38%, rgba(167,139,250,.09) 100%);}
+  background:linear-gradient(135deg, rgba(45,212,191,.10) 0%, var(--ds-hero-mid) 38%, rgba(167,139,250,.09) 100%);}
 .ds-hero::after {content:""; position:absolute; inset:0; background:radial-gradient(500px 160px at 100% 0%, rgba(45,212,191,.12), transparent 70%); pointer-events:none;}
 .ds-hero h1 {margin:0; font-size:1.85rem; font-weight:800; color:var(--ds-strong); position:relative;}
 .ds-hero p {margin:.3rem 0 0 0; color:var(--ds-muted); font-size:.98rem; position:relative; max-width:70ch;}
@@ -76,12 +76,12 @@ h1, h2, h3 {letter-spacing: -0.015em;}
 .ds-kpi-value {font-size:1.9rem; font-weight:800; line-height:1.2; color:var(--ds-strong); letter-spacing:-.02em; margin-top:.15rem; display:flex; align-items:baseline; gap:.5rem;}
 .ds-kpi-sub {color:var(--ds-muted); font-size:.8rem; margin-top:.1rem;}
 .ds-delta {font-size:.78rem; font-weight:700; padding:.08rem .45rem; border-radius:999px; letter-spacing:0;
-  color:var(--d); background:color-mix(in srgb, var(--d) 14%, transparent);}
+  color:color-mix(in srgb, var(--d) 70%, var(--ds-strong)); background:color-mix(in srgb, var(--d) 14%, transparent);}
 .ds-kpi svg.ds-spark {position:absolute; right:.8rem; bottom:.7rem; opacity:.9;}
 
 /* badges, chips, callouts */
 .ds-badge {display:inline-block; padding:.12rem .55rem; border-radius:999px; font-size:.7rem; font-weight:700;
-  letter-spacing:.04em; text-transform:uppercase; color:var(--c); background:color-mix(in srgb, var(--c) 16%, transparent);
+  letter-spacing:.04em; text-transform:uppercase; color:color-mix(in srgb, var(--c) 70%, var(--ds-strong)); background:color-mix(in srgb, var(--c) 16%, transparent);
   border:1px solid color-mix(in srgb, var(--c) 45%, transparent); white-space:nowrap;}
 .ds-chip {display:inline-flex; align-items:center; gap:.4rem; padding:.2rem .65rem; border-radius:999px; font-size:.78rem;
   background:var(--ds-surface-2); border:1px solid var(--ds-border); color:var(--ds-muted); margin:.15rem .3rem .15rem 0;}
@@ -123,7 +123,7 @@ div[class*="st-key-card_"] {background:var(--ds-surface); border:1px solid var(-
 .ds-progress i {display:block; height:100%; border-radius:999px; background:linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 60%, white));}
 
 /* empty state */
-.ds-empty {text-align:center; padding:2.2rem 1rem; border:1px dashed var(--ds-border-hi); border-radius:16px; background:rgba(17,26,46,.55); margin:.8rem 0 1rem 0;}
+.ds-empty {text-align:center; padding:2.2rem 1rem; border:1px dashed var(--ds-border-hi); border-radius:16px; background:var(--ds-tint); margin:.8rem 0 1rem 0;}
 .ds-empty .big {font-size:2rem; line-height:1; margin-bottom:.4rem;}
 .ds-empty h4 {margin:.2rem 0; color:var(--ds-strong);} .ds-empty p {margin:0 auto; color:var(--ds-muted); max-width:56ch; font-size:.92rem;}
 .ds-steps {display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.8rem; margin:1rem 0;}
@@ -140,7 +140,7 @@ div[data-baseweb="tab-list"] {gap:.25rem;}
 .stButton > button:hover, .stDownloadButton > button:hover {transform:translateY(-1px);}
 .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"] {background:linear-gradient(135deg,#14b8a6,#2dd4bf); color:#04201c; border:none; box-shadow:0 6px 18px -8px rgba(45,212,191,.7);}
 [data-testid="stDataFrame"] {border:1px solid var(--ds-border); border-radius:12px; overflow:hidden;}
-[data-testid="stExpander"] {border:1px solid var(--ds-border) !important; border-radius:12px !important; background:rgba(17,26,46,.5);}
+[data-testid="stExpander"] {border:1px solid var(--ds-border) !important; border-radius:12px !important; background:var(--ds-tint);}
 [data-testid="stMetric"] {background:var(--ds-surface); border:1px solid var(--ds-border); border-radius:12px; padding:.6rem .9rem;}
 hr {border-color:var(--ds-border) !important;}
 @media (max-width: 900px) {.ds-hero h1 {font-size:1.45rem;} .ds-bar-row {grid-template-columns:1fr 2fr auto;} .ds-tile {flex-direction:column; align-items:flex-start;}}
@@ -163,8 +163,21 @@ def _color(value: str) -> str:
     return v if all(ch.isalnum() or ch in "#(),.% " for ch in v) else "#64748b"
 
 
+def theme_mode() -> str:
+    """'dark' or 'light' - what the sidebar switch is set to."""
+    return theme.mode_from_state(st.session_state)
+
+
 def inject_css() -> None:
-    st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
+    st.markdown(f"<style>{theme.build_css(theme_mode(), CSS, theme.native_theme())}</style>", unsafe_allow_html=True)
+
+
+def theme_switch() -> None:
+    """Dark grey / white switch. The choice is remembered (components/prefs.py) and restyles the whole app."""
+    if theme.SESSION_KEY not in st.session_state:
+        st.session_state[theme.SESSION_KEY] = prefs.get(theme.PREF_KEY, theme.DEFAULT) == "light"
+    st.toggle("Light theme", key=theme.SESSION_KEY, help="Switch the whole app between dark grey and white.")
+    prefs.set(theme.PREF_KEY, theme_mode())
 
 
 # --------------------------------------------------------------------------- atoms
@@ -223,7 +236,7 @@ def score_ring(score: float | None, size: int = 84, color: str | None = None, la
     text = "–" if score is None else f"{pct:.0f}"
     c = size / 2
     return (f'<svg class="ds-ring" width="{size}" height="{size}" viewBox="0 0 {size} {size}" role="img" aria-label="score {text} {esc(label)}">'
-            f'<circle cx="{c}" cy="{c}" r="{r}" fill="none" stroke="#1e293b" stroke-width="7"/>'
+            f'<circle cx="{c}" cy="{c}" r="{r}" fill="none" style="stroke:var(--ds-border)" stroke-width="7"/>'
             f'<circle cx="{c}" cy="{c}" r="{r}" fill="none" stroke="{col}" stroke-width="7" stroke-linecap="round" '
             f'stroke-dasharray="{circ * pct / 100:.1f} {circ:.1f}" transform="rotate(-90 {c} {c})"/>'
             f'<text x="{c}" y="{c + size * 0.09:.1f}" text-anchor="middle" font-size="{size * 0.3:.0f}">{text}</text></svg>')
@@ -353,9 +366,9 @@ def fmt_score(n: Any) -> str:
 
 def show_chart(fig, key: str | None = None) -> None:
     try:
-        st.plotly_chart(fig, width="stretch", key=key)
+        st.plotly_chart(fig, width="stretch", key=key, theme=None)
     except TypeError:  # older Streamlit
-        st.plotly_chart(fig, use_container_width=True, key=key)
+        st.plotly_chart(fig, use_container_width=True, key=key, theme=None)
 
 
 def show_df(data, **kwargs) -> None:

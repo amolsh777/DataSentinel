@@ -1,4 +1,5 @@
 {
   "stale_hours": 48,
-  "score_target": 90
+  "score_target": 90,
+  "theme": "dark"
 }

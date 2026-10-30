@@ -269,3 +269,39 @@ with tab_demo:
         else:
             st.rerun()
     st.caption("To start over completely, run `python scripts/reset_demo.py --yes` and refresh this page.")
+
+    # ------------------------------------------------------------------ demo portfolio
+    st.markdown("---")
+    st.markdown("**Demo portfolio · 10 larger datasets with a reference and four changed versions each**")
+    manifest_path = SAMPLE_DIR / "portfolio" / "manifest.json"
+    if not manifest_path.exists():
+        ui.callout("info", "Portfolio files are not generated yet. Run `python scripts/seed_portfolio.py --files-only`.")
+    else:
+        import json as _json
+        manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))["datasets"]
+        pending = [n for n in manifest if n not in existing]
+        st.caption(f"{len(manifest) - len(pending)} of {len(manifest)} loaded. Each dataset has v1 = clean reference, v2 = mild drift, "
+                   "v3 = degraded, v4 = severe incident (schema change), v5 = recovering. Approve v1 as the baseline on "
+                   "**Rules & Baselines**, then run an assessment with a later version as *current*.")
+        if st.button(f"Upload {len(pending)} portfolio dataset(s) (all versions)", disabled=not pending, key="pf_load"):
+            bar = st.progress(0.0)
+            try:
+                for i, name in enumerate(pending):
+                    meta = manifest[name]
+                    ordered = sorted(meta["files"].items(), key=lambda kv: kv[1]["version"])
+                    created = None
+                    for fname, _info in ordered:
+                        content = (SAMPLE_DIR / "portfolio" / meta["slug"] / fname).read_bytes()
+                        if created is None:
+                            created = c.create_dataset(name=name, filename=fname, content=content, project=meta["project"], owner="demo",
+                                                       is_synthetic=True, description=f"SYNTHETIC {name} (demo portfolio).")
+                        else:
+                            c.add_version(created["id"], filename=fname, content=content, is_synthetic=True)
+                    bar.progress((i + 1) / len(pending))
+            except ApiError as exc:
+                ui.show_error(exc)
+            else:
+                st.cache_data.clear()
+                st.rerun()
+        st.caption("For rules, baselines, lineage and 30 days of run history in one go: `python scripts/seed_portfolio.py --yes` "
+                   "(add `--quick` for a faster, smaller build).")

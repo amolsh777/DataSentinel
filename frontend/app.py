@@ -14,6 +14,9 @@ from services.api_client import ApiError  # noqa: E402
 
 st.set_page_config(page_title="DataSentinel", page_icon=":material/shield:", layout="wide",
                    initial_sidebar_state="expanded")
+if "ds_light" not in st.session_state:  # seed the theme before the CSS is built (the switch itself is drawn in the sidebar)
+    from components import prefs, theme  # noqa: E402
+    st.session_state[theme.SESSION_KEY] = prefs.get(theme.PREF_KEY, theme.DEFAULT) == "light"
 ui.inject_css()
 # Put the brand + dataset picker above the page list (falls back to Streamlit's default order if the selectors change).
 st.markdown("""<style>
@@ -28,6 +31,7 @@ if "_select_dataset" in st.session_state:
 with st.sidebar:
     st.markdown(f'<div class="ds-brand">{ui.LOGO_SVG}<div>DataSentinel<small>data quality · drift · lineage</small></div></div>',
                 unsafe_allow_html=True)
+    ui.theme_switch()
     c = state.client()
     try:
         c.health()

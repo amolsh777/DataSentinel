@@ -7,21 +7,21 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 
+from components.theme import tok
 from components.ui import ACCENT, SEVERITY_COLORS
 
 MUTED = "#64748b"
-GRID = "#1e293b"
 
 
 def _style(fig: go.Figure, height: int = 340, title: str | None = None) -> go.Figure:
     fig.update_layout(
-        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=height,
-        margin=dict(l=10, r=10, t=44 if title else 16, b=10), title=dict(text=title, x=0.01, font=dict(size=15, color="#f1f5f9")),
-        font=dict(family="Inter, system-ui, sans-serif", color="#cbd5e1", size=12),
+        template="plotly_dark" if tok("bg") != "#ffffff" else "plotly_white", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=height,
+        margin=dict(l=10, r=10, t=44 if title else 16, b=10), title=dict(text=title, x=0.01, font=dict(size=15, color=tok("strong"))),
+        font=dict(family="Inter, system-ui, sans-serif", color=tok("text"), size=12),
         legend=dict(orientation="h", y=1.12, x=0, font=dict(size=11)),
-        hoverlabel=dict(bgcolor="#0f172a", bordercolor="#334155", font_size=12))
-    fig.update_xaxes(gridcolor=GRID, zerolinecolor=GRID, linecolor=GRID)
-    fig.update_yaxes(gridcolor=GRID, zerolinecolor=GRID, linecolor=GRID)
+        hoverlabel=dict(bgcolor=tok("surface"), bordercolor=tok("border-hi"), font_size=12))
+    fig.update_xaxes(gridcolor=tok("grid"), zerolinecolor=tok("grid"), linecolor=tok("grid"))
+    fig.update_yaxes(gridcolor=tok("grid"), zerolinecolor=tok("grid"), linecolor=tok("grid"))
     return fig
 
 
@@ -33,9 +33,9 @@ def score_gauge(score: float | None, threshold: float | None = None) -> go.Figur
     value = 0 if score is None else score
     gauge: dict[str, Any] = {
         "axis": {"range": [0, 100], "tickcolor": MUTED}, "bar": {"color": _score_color(value), "thickness": 0.28},
-        "bgcolor": "#111a2e", "borderwidth": 0}
+        "bgcolor": tok("surface"), "borderwidth": 0}
     if threshold is not None:
-        gauge["threshold"] = {"line": {"color": "#f8fafc", "width": 3}, "thickness": 0.8, "value": threshold}
+        gauge["threshold"] = {"line": {"color": tok("strong"), "width": 3}, "thickness": 0.8, "value": threshold}
     fig = go.Figure(go.Indicator(mode="gauge+number", value=value, number={"font": {"size": 44}}, gauge=gauge))
     return _style(fig, 250)
 
@@ -48,7 +48,7 @@ def dimension_bars(dimensions: dict[str, dict[str, Any]]) -> go.Figure:
     fig = go.Figure(go.Bar(x=scores, y=names, orientation="h", marker_color=colors,
                            text=[f"{s:.1f}" for s in scores], textposition="inside", name="score"))
     fig.add_trace(go.Scatter(x=[d.get("threshold") for _, d in rows], y=names, mode="markers", name="minimum",
-                             marker=dict(symbol="line-ns", size=26, line=dict(width=3, color="#f8fafc"))))
+                             marker=dict(symbol="line-ns", size=26, line=dict(width=3, color=tok("strong")))))
     fig.update_xaxes(range=[0, 100])
     fig.update_yaxes(autorange="reversed")
     return _style(fig, 60 + 52 * max(len(rows), 1))
@@ -62,8 +62,8 @@ def radar(dimensions: dict[str, dict[str, Any]]) -> go.Figure:
                                   theta=names, fill="toself", name="score", line_color=ACCENT))
     fig.add_trace(go.Scatterpolar(r=[d.get("threshold") for _, d in rows] + ([rows[0][1].get("threshold")] if rows else []),
                                   theta=names, name="minimum", line=dict(color="#94a3b8", dash="dot")))
-    fig.update_layout(polar=dict(radialaxis=dict(range=[0, 100], gridcolor=GRID), bgcolor="rgba(0,0,0,0)",
-                                 angularaxis=dict(gridcolor=GRID)))
+    fig.update_layout(polar=dict(radialaxis=dict(range=[0, 100], gridcolor=tok("grid")), bgcolor="rgba(0,0,0,0)",
+                                 angularaxis=dict(gridcolor=tok("grid"))))
     return _style(fig, 330)
 
 
@@ -102,7 +102,7 @@ def effect_size_chart(features: list[dict[str, Any]]) -> go.Figure:
         x=[r[2][0] for r in rows], y=[r[0] for r in rows], orientation="h",
         marker_color=[SEVERITY_COLORS.get(r[1], MUTED) if r[2][0] >= 1 else MUTED for r in rows],
         text=[r[2][1] for r in rows], textposition="auto", name="effect size"))
-    fig.add_vline(x=1, line_dash="dash", line_color="#f8fafc", annotation_text="warn threshold", annotation_position="top")
+    fig.add_vline(x=1, line_dash="dash", line_color=tok("strong"), annotation_text="warn threshold", annotation_position="top")
     fig.update_xaxes(title="effect size ÷ warn threshold (log scale)", type="log")
     return _style(fig, 80 + 34 * max(len(rows), 1), "Drift effect size by feature")
 
@@ -238,7 +238,7 @@ def network_plotly(assets: list[dict], edges: list[dict], highlight_ids: set[str
         traces.append(go.Scatter(
             x=xs, y=ys, mode="markers+text", text=texts,
             textposition="top center", name=atype,
-            marker=dict(size=sizes, color=colors, line=dict(color="#0b1220", width=1.5)),
+            marker=dict(size=sizes, color=colors, line=dict(color=tok("bg"), width=1.5)),
             hovertemplate="<b>%{text}</b><br>type: " + atype + "<extra></extra>"))
 
     fig = go.Figure(traces)
@@ -264,7 +264,7 @@ def score_trend_with_target(rows: list[dict], target: float, anomalies: list[int
     fig.add_hrect(y0=target, y1=100, fillcolor="rgba(34,197,94,.07)", line_width=0)
     fig.add_trace(go.Scatter(
         x=xs, y=ys, mode="lines+markers", name="quality score", line=dict(color=ACCENT, width=2.5, shape="spline", smoothing=0.5),
-        marker=dict(size=7, color=[_score_color(v) if v is not None else MUTED for v in ys], line=dict(color="#0b1220", width=1.5)),
+        marker=dict(size=7, color=[_score_color(v) if v is not None else MUTED for v in ys], line=dict(color=tok("bg"), width=1.5)),
         fill="tozeroy", fillcolor="rgba(45,212,191,.07)", connectgaps=True,
         customdata=[[r.get("current_version"), r.get("failures", 0), r.get("drifted_features", 0)] for r in rows],
         hovertemplate="<b>%{x}</b><br>score %{y:.1f}<br>v%{customdata[0]} · %{customdata[1]} failures · %{customdata[2]} drifted<extra></extra>"))
@@ -309,10 +309,10 @@ def issue_type_bars(breakdown: dict[str, dict]) -> go.Figure:
 def outcome_donut(counts: dict[str, int], centre: str = "") -> go.Figure:
     order = [k for k in ("pass", "warn", "fail", "skipped") if counts.get(k)]
     fig = go.Figure(go.Pie(labels=order, values=[counts[k] for k in order], hole=0.66, sort=False,
-                           marker=dict(colors=[OUTCOME_COLORS_MAP[k] for k in order], line=dict(color="#0b1220", width=2)),
+                           marker=dict(colors=[OUTCOME_COLORS_MAP[k] for k in order], line=dict(color=tok("bg"), width=2)),
                            textinfo="value", hovertemplate="<b>%{label}</b>: %{value} checks (%{percent})<extra></extra>"))
     if centre:
-        fig.add_annotation(text=centre, x=0.5, y=0.5, showarrow=False, font=dict(size=22, color="#f8fafc"))
+        fig.add_annotation(text=centre, x=0.5, y=0.5, showarrow=False, font=dict(size=22, color=tok("strong")))
     fig.update_layout(showlegend=True, legend=dict(orientation="h", y=-0.05, x=0.1))
     return _style(fig, 260)
 
@@ -324,7 +324,7 @@ def rule_type_heatmap(xs: list[str], ys: list[str], z: list[list]) -> go.Figure:
     """Rule type x run, coloured by the worst affected % (blank where the type was not evaluated)."""
     fig = go.Figure(go.Heatmap(
         z=z, x=xs, y=[y.replace("_", " ") for y in ys], xgap=3, ygap=3, hoverongaps=False,
-        colorscale=[[0, "#122036"], [0.02, "#164e63"], [0.35, "#eab308"], [1, "#ef4444"]], zmin=0,
+        colorscale=[[0, tok("heat0")], [0.02, "#164e63"], [0.35, "#eab308"], [1, "#ef4444"]], zmin=0,
         colorbar=dict(title="% rows", thickness=10, len=0.9),
         hovertemplate="<b>%{y}</b><br>%{x}<br>worst check affects %{z:.2f}% of rows<extra></extra>"))
     fig.update_xaxes(type="category", tickangle=-30 if len(xs) > 8 else 0)
@@ -350,7 +350,7 @@ def incident_timeline(incidents: list[dict]) -> go.Figure:
         fig.add_trace(go.Scatter(
             x=[i["first_seen_at"][:19] for i in sub], y=[i.get("incident_type", "?") for i in sub], mode="markers", name=sev,
             marker=dict(size=[min(34, 10 + 3 * (i.get("occurrence_count") or 1)) for i in sub], color=SEVERITY_COLORS[sev],
-                        opacity=0.85, line=dict(color="#0b1220", width=1)),
+                        opacity=0.85, line=dict(color=tok("bg"), width=1)),
             text=[i.get("title", "")[:70] for i in sub],
             hovertemplate="<b>%{text}</b><br>first seen %{x}<extra>" + sev + "</extra>"))
     fig.update_yaxes(title="")

@@ -1,0 +1,732 @@
+{
+  "assets": [
+    {
+      "name": "Orders Warehouse",
+      "asset_type": "dataset",
+      "dataset_name": "Orders Warehouse",
+      "columns": [
+        "order_id",
+        "unit_price",
+        "total",
+        "quantity",
+        "country",
+        "category",
+        "status",
+        "order_date"
+      ]
+    },
+    {
+      "name": "Orders Warehouse ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Orders Warehouse",
+      "columns": [
+        "order_id",
+        "unit_price",
+        "total",
+        "quantity",
+        "country",
+        "category",
+        "status",
+        "order_date"
+      ]
+    },
+    {
+      "name": "Revenue Dashboard",
+      "asset_type": "report",
+      "columns": [
+        "unit_price",
+        "total",
+        "country"
+      ]
+    },
+    {
+      "name": "Daily GMV",
+      "asset_type": "metric",
+      "columns": [
+        "unit_price",
+        "total",
+        "country"
+      ]
+    },
+    {
+      "name": "Banking Transactions",
+      "asset_type": "dataset",
+      "dataset_name": "Banking Transactions",
+      "columns": [
+        "txn_id",
+        "amount",
+        "balance_after",
+        "currency",
+        "channel",
+        "merchant_category",
+        "txn_ts"
+      ]
+    },
+    {
+      "name": "Banking Transactions ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Banking Transactions",
+      "columns": [
+        "txn_id",
+        "amount",
+        "balance_after",
+        "currency",
+        "channel",
+        "merchant_category",
+        "txn_ts"
+      ]
+    },
+    {
+      "name": "Fraud Model Features",
+      "asset_type": "ml_feature",
+      "columns": [
+        "amount",
+        "balance_after",
+        "currency"
+      ]
+    },
+    {
+      "name": "Risk Report",
+      "asset_type": "report",
+      "columns": [
+        "amount",
+        "balance_after",
+        "currency"
+      ]
+    },
+    {
+      "name": "Patient Visits",
+      "asset_type": "dataset",
+      "dataset_name": "Patient Visits",
+      "columns": [
+        "visit_id",
+        "age",
+        "length_of_stay_days",
+        "charges",
+        "gender",
+        "department",
+        "insurance",
+        "admit_date"
+      ]
+    },
+    {
+      "name": "Patient Visits ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Patient Visits",
+      "columns": [
+        "visit_id",
+        "age",
+        "length_of_stay_days",
+        "charges",
+        "gender",
+        "department",
+        "insurance",
+        "admit_date"
+      ]
+    },
+    {
+      "name": "Occupancy Report",
+      "asset_type": "report",
+      "columns": [
+        "age",
+        "length_of_stay_days",
+        "gender"
+      ]
+    },
+    {
+      "name": "IoT Sensor Readings",
+      "asset_type": "dataset",
+      "dataset_name": "IoT Sensor Readings",
+      "columns": [
+        "reading_id",
+        "temperature_c",
+        "humidity_pct",
+        "pressure_hpa",
+        "battery_pct",
+        "status",
+        "firmware",
+        "ts"
+      ]
+    },
+    {
+      "name": "IoT Sensor Readings ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of IoT Sensor Readings",
+      "columns": [
+        "reading_id",
+        "temperature_c",
+        "humidity_pct",
+        "pressure_hpa",
+        "battery_pct",
+        "status",
+        "firmware",
+        "ts"
+      ]
+    },
+    {
+      "name": "Device Health Monitor",
+      "asset_type": "report",
+      "columns": [
+        "temperature_c",
+        "humidity_pct",
+        "status"
+      ]
+    },
+    {
+      "name": "Anomaly Features",
+      "asset_type": "ml_feature",
+      "columns": [
+        "temperature_c",
+        "humidity_pct",
+        "status"
+      ]
+    },
+    {
+      "name": "HR Employees",
+      "asset_type": "dataset",
+      "dataset_name": "HR Employees",
+      "columns": [
+        "employee_id",
+        "salary",
+        "age",
+        "department",
+        "grade",
+        "remote",
+        "hire_date"
+      ]
+    },
+    {
+      "name": "HR Employees ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of HR Employees",
+      "columns": [
+        "employee_id",
+        "salary",
+        "age",
+        "department",
+        "grade",
+        "remote",
+        "hire_date"
+      ]
+    },
+    {
+      "name": "Headcount Report",
+      "asset_type": "report",
+      "columns": [
+        "salary",
+        "age",
+        "department"
+      ]
+    },
+    {
+      "name": "Telecom Customers",
+      "asset_type": "dataset",
+      "dataset_name": "Telecom Customers",
+      "columns": [
+        "customer_id",
+        "monthly_charge",
+        "data_gb",
+        "tenure_months",
+        "plan",
+        "region"
+      ]
+    },
+    {
+      "name": "Telecom Customers ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Telecom Customers",
+      "columns": [
+        "customer_id",
+        "monthly_charge",
+        "data_gb",
+        "tenure_months",
+        "plan",
+        "region"
+      ]
+    },
+    {
+      "name": "Churn Model Features",
+      "asset_type": "ml_feature",
+      "columns": [
+        "monthly_charge",
+        "data_gb",
+        "plan"
+      ]
+    },
+    {
+      "name": "ARPU Metric",
+      "asset_type": "metric",
+      "columns": [
+        "monthly_charge",
+        "data_gb",
+        "plan"
+      ]
+    },
+    {
+      "name": "Logistics Shipments",
+      "asset_type": "dataset",
+      "dataset_name": "Logistics Shipments",
+      "columns": [
+        "shipment_id",
+        "weight_kg",
+        "cost",
+        "delivery_days",
+        "carrier",
+        "status",
+        "origin",
+        "ship_date"
+      ]
+    },
+    {
+      "name": "Logistics Shipments ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Logistics Shipments",
+      "columns": [
+        "shipment_id",
+        "weight_kg",
+        "cost",
+        "delivery_days",
+        "carrier",
+        "status",
+        "origin",
+        "ship_date"
+      ]
+    },
+    {
+      "name": "On-time Delivery KPI",
+      "asset_type": "metric",
+      "columns": [
+        "weight_kg",
+        "cost",
+        "carrier"
+      ]
+    },
+    {
+      "name": "Web Clickstream",
+      "asset_type": "dataset",
+      "dataset_name": "Web Clickstream",
+      "columns": [
+        "event_id",
+        "duration_s",
+        "page",
+        "device",
+        "browser",
+        "referrer",
+        "ts"
+      ]
+    },
+    {
+      "name": "Web Clickstream ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Web Clickstream",
+      "columns": [
+        "event_id",
+        "duration_s",
+        "page",
+        "device",
+        "browser",
+        "referrer",
+        "ts"
+      ]
+    },
+    {
+      "name": "Funnel Report",
+      "asset_type": "report",
+      "columns": [
+        "duration_s",
+        "page"
+      ]
+    },
+    {
+      "name": "Sessions Metric",
+      "asset_type": "metric",
+      "columns": [
+        "duration_s",
+        "page"
+      ]
+    },
+    {
+      "name": "Insurance Claims",
+      "asset_type": "dataset",
+      "dataset_name": "Insurance Claims",
+      "columns": [
+        "claim_id",
+        "claim_amount",
+        "approved_amount",
+        "claim_type",
+        "status",
+        "region",
+        "claim_date"
+      ]
+    },
+    {
+      "name": "Insurance Claims ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Insurance Claims",
+      "columns": [
+        "claim_id",
+        "claim_amount",
+        "approved_amount",
+        "claim_type",
+        "status",
+        "region",
+        "claim_date"
+      ]
+    },
+    {
+      "name": "Loss Ratio Report",
+      "asset_type": "report",
+      "columns": [
+        "claim_amount",
+        "approved_amount",
+        "claim_type"
+      ]
+    },
+    {
+      "name": "Energy Meter Usage",
+      "asset_type": "dataset",
+      "dataset_name": "Energy Meter Usage",
+      "columns": [
+        "reading_id",
+        "kwh",
+        "voltage",
+        "tariff",
+        "region",
+        "reading_date"
+      ]
+    },
+    {
+      "name": "Energy Meter Usage ETL",
+      "asset_type": "transformation",
+      "description": "Nightly load of Energy Meter Usage",
+      "columns": [
+        "reading_id",
+        "kwh",
+        "voltage",
+        "tariff",
+        "region",
+        "reading_date"
+      ]
+    },
+    {
+      "name": "Load Forecast Features",
+      "asset_type": "ml_feature",
+      "columns": [
+        "kwh",
+        "voltage",
+        "tariff"
+      ]
+    },
+    {
+      "name": "Billing Report",
+      "asset_type": "report",
+      "columns": [
+        "kwh",
+        "voltage",
+        "tariff"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "Orders Warehouse",
+      "target": "Orders Warehouse ETL",
+      "source_columns": [
+        "order_id",
+        "unit_price",
+        "total",
+        "quantity",
+        "country",
+        "category",
+        "status",
+        "order_date"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Orders Warehouse ETL",
+      "target": "Revenue Dashboard",
+      "source_columns": [
+        "unit_price",
+        "total",
+        "country"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Orders Warehouse ETL",
+      "target": "Daily GMV",
+      "source_columns": [
+        "unit_price",
+        "total",
+        "country"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Banking Transactions",
+      "target": "Banking Transactions ETL",
+      "source_columns": [
+        "txn_id",
+        "amount",
+        "balance_after",
+        "currency",
+        "channel",
+        "merchant_category",
+        "txn_ts"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Banking Transactions ETL",
+      "target": "Fraud Model Features",
+      "source_columns": [
+        "amount",
+        "balance_after",
+        "currency"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Banking Transactions ETL",
+      "target": "Risk Report",
+      "source_columns": [
+        "amount",
+        "balance_after",
+        "currency"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Patient Visits",
+      "target": "Patient Visits ETL",
+      "source_columns": [
+        "visit_id",
+        "age",
+        "length_of_stay_days",
+        "charges",
+        "gender",
+        "department",
+        "insurance",
+        "admit_date"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Patient Visits ETL",
+      "target": "Occupancy Report",
+      "source_columns": [
+        "age",
+        "length_of_stay_days",
+        "gender"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "IoT Sensor Readings",
+      "target": "IoT Sensor Readings ETL",
+      "source_columns": [
+        "reading_id",
+        "temperature_c",
+        "humidity_pct",
+        "pressure_hpa",
+        "battery_pct",
+        "status",
+        "firmware",
+        "ts"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "IoT Sensor Readings ETL",
+      "target": "Device Health Monitor",
+      "source_columns": [
+        "temperature_c",
+        "humidity_pct",
+        "status"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "IoT Sensor Readings ETL",
+      "target": "Anomaly Features",
+      "source_columns": [
+        "temperature_c",
+        "humidity_pct",
+        "status"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "HR Employees",
+      "target": "HR Employees ETL",
+      "source_columns": [
+        "employee_id",
+        "salary",
+        "age",
+        "department",
+        "grade",
+        "remote",
+        "hire_date"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "HR Employees ETL",
+      "target": "Headcount Report",
+      "source_columns": [
+        "salary",
+        "age",
+        "department"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Telecom Customers",
+      "target": "Telecom Customers ETL",
+      "source_columns": [
+        "customer_id",
+        "monthly_charge",
+        "data_gb",
+        "tenure_months",
+        "plan",
+        "region"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Telecom Customers ETL",
+      "target": "Churn Model Features",
+      "source_columns": [
+        "monthly_charge",
+        "data_gb",
+        "plan"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Telecom Customers ETL",
+      "target": "ARPU Metric",
+      "source_columns": [
+        "monthly_charge",
+        "data_gb",
+        "plan"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Logistics Shipments",
+      "target": "Logistics Shipments ETL",
+      "source_columns": [
+        "shipment_id",
+        "weight_kg",
+        "cost",
+        "delivery_days",
+        "carrier",
+        "status",
+        "origin",
+        "ship_date"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Logistics Shipments ETL",
+      "target": "On-time Delivery KPI",
+      "source_columns": [
+        "weight_kg",
+        "cost",
+        "carrier"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Web Clickstream",
+      "target": "Web Clickstream ETL",
+      "source_columns": [
+        "event_id",
+        "duration_s",
+        "page",
+        "device",
+        "browser",
+        "referrer",
+        "ts"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Web Clickstream ETL",
+      "target": "Funnel Report",
+      "source_columns": [
+        "duration_s",
+        "page"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Web Clickstream ETL",
+      "target": "Sessions Metric",
+      "source_columns": [
+        "duration_s",
+        "page"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Insurance Claims",
+      "target": "Insurance Claims ETL",
+      "source_columns": [
+        "claim_id",
+        "claim_amount",
+        "approved_amount",
+        "claim_type",
+        "status",
+        "region",
+        "claim_date"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Insurance Claims ETL",
+      "target": "Loss Ratio Report",
+      "source_columns": [
+        "claim_amount",
+        "approved_amount",
+        "claim_type"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Energy Meter Usage",
+      "target": "Energy Meter Usage ETL",
+      "source_columns": [
+        "reading_id",
+        "kwh",
+        "voltage",
+        "tariff",
+        "region",
+        "reading_date"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Energy Meter Usage ETL",
+      "target": "Load Forecast Features",
+      "source_columns": [
+        "kwh",
+        "voltage",
+        "tariff"
+      ],
+      "kind": "known"
+    },
+    {
+      "source": "Energy Meter Usage ETL",
+      "target": "Billing Report",
+      "source_columns": [
+        "kwh",
+        "voltage",
+        "tariff"
+      ],
+      "kind": "known"
+    }
+  ]
+}

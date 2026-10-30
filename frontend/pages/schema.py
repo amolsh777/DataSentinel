@@ -45,7 +45,7 @@ for col in diff["columns"]:
                  "baseline dtype": b.get("pandas_dtype", "—"), "current dtype": n.get("pandas_dtype", "—"),
                  "baseline missing %": b.get("missing_pct"), "current missing %": n.get("missing_pct"),
                  "baseline unique %": b.get("unique_pct"), "current unique %": n.get("unique_pct")})
-styled = pd.DataFrame(rows).style.map(lambda v: f"color: {ui.STATUS_COLORS.get(v, '#e2e8f0')}; font-weight: 600", subset=["status"])
+styled = pd.DataFrame(rows).style.map(lambda v: f"color: {ui.STATUS_COLORS.get(v, 'inherit')}; font-weight: 600", subset=["status"])
 ui.show_df(styled)
 
 st.subheader("Changes")

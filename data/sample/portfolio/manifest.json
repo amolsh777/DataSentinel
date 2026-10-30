@@ -1,0 +1,366 @@
+{
+  "synthetic": true,
+  "scale": 0.2,
+  "datasets": {
+    "Orders Warehouse": {
+      "slug": "orders",
+      "project": "E-commerce",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 12000,
+          "columns": 11
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 12648,
+          "columns": 11
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 13484,
+          "columns": 11
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 14468,
+          "columns": 11
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 14194,
+          "columns": 11
+        }
+      }
+    },
+    "Banking Transactions": {
+      "slug": "banking",
+      "project": "Finance",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 16000,
+          "columns": 9
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 16864,
+          "columns": 9
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 17979,
+          "columns": 9
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 19290,
+          "columns": 9
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 18927,
+          "columns": 9
+        }
+      }
+    },
+    "Patient Visits": {
+      "slug": "health",
+      "project": "Healthcare",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 8000,
+          "columns": 10
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 8432,
+          "columns": 10
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 8989,
+          "columns": 10
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 9645,
+          "columns": 10
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 9463,
+          "columns": 10
+        }
+      }
+    },
+    "IoT Sensor Readings": {
+      "slug": "iot",
+      "project": "Operations",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 20000,
+          "columns": 9
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 21080,
+          "columns": 9
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 22474,
+          "columns": 9
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 24113,
+          "columns": 9
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 23659,
+          "columns": 9
+        }
+      }
+    },
+    "HR Employees": {
+      "slug": "hr",
+      "project": "People",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 4000,
+          "columns": 8
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 4216,
+          "columns": 8
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 4494,
+          "columns": 8
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 4822,
+          "columns": 8
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 4731,
+          "columns": 8
+        }
+      }
+    },
+    "Telecom Customers": {
+      "slug": "telecom",
+      "project": "Telecom",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 10000,
+          "columns": 8
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 10540,
+          "columns": 8
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 11237,
+          "columns": 8
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 12056,
+          "columns": 8
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 11829,
+          "columns": 8
+        }
+      }
+    },
+    "Logistics Shipments": {
+      "slug": "logistics",
+      "project": "Supply Chain",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 9000,
+          "columns": 9
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 9486,
+          "columns": 9
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 10113,
+          "columns": 9
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 10851,
+          "columns": 9
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 10646,
+          "columns": 9
+        }
+      }
+    },
+    "Web Clickstream": {
+      "slug": "clicks",
+      "project": "Marketing",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 24000,
+          "columns": 10
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 25296,
+          "columns": 10
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 26969,
+          "columns": 10
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 28936,
+          "columns": 10
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 28390,
+          "columns": 10
+        }
+      }
+    },
+    "Insurance Claims": {
+      "slug": "claims",
+      "project": "Insurance",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 7000,
+          "columns": 9
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 7378,
+          "columns": 9
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 7866,
+          "columns": 9
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 8439,
+          "columns": 9
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 8279,
+          "columns": 9
+        }
+      }
+    },
+    "Energy Meter Usage": {
+      "slug": "energy",
+      "project": "Utilities",
+      "files": {
+        "v1_reference_clean.csv": {
+          "version": 1,
+          "severity": 0.0,
+          "rows": 14000,
+          "columns": 8
+        },
+        "v2_mild_drift.csv": {
+          "version": 2,
+          "severity": 0.15,
+          "rows": 14756,
+          "columns": 8
+        },
+        "v3_degraded.csv": {
+          "version": 3,
+          "severity": 0.45,
+          "rows": 15732,
+          "columns": 8
+        },
+        "v4_severe_incident.csv": {
+          "version": 4,
+          "severity": 0.85,
+          "rows": 16879,
+          "columns": 8
+        },
+        "v5_recovering.csv": {
+          "version": 5,
+          "severity": 0.22,
+          "rows": 16560,
+          "columns": 8
+        }
+      }
+    }
+  }
+}

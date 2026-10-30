@@ -19,7 +19,7 @@ uvicorn app.asgi:app --port 8000
 
 # terminal 2 - frontend (repository root, same virtual environment)
 streamlit run frontend\app.py
-```
+
 
 Open **http://localhost:8501**. Starting from an empty database also works: **Datasets → Demo data**
 has three buttons that load the synthetic datasets, configure rules and a baseline, and add the
